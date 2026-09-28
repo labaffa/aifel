@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#043E54">
+    <meta name="description" content="Consulta le informazioni disponibili sui progetti PNRR a partire dal CUP.">
+    <title>Portale informazioni PNRR · IFEL</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+    <link rel="stylesheet" href="/assets/tabs.css">
+    <link rel="stylesheet" href="/assets/procedures-table.css">
+    <script src="/assets/app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="/" aria-label="IFEL, portale informazioni PNRR">
+          <span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="brand-name">IFEL <small>portale informazioni</small></span>
+        </a>
+        <a class="nav-search" href="#ricerca" aria-label="Vai alla ricerca CUP"><span></span></a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="portale">
+        <div class="hero-pattern" aria-hidden="true"></div>
+      </section>
+
+      <section class="search-wrap" id="ricerca" aria-label="Ricerca per CUP">
+        <div class="search-panel">
+          <div class="search-heading">
+            <span class="section-mark" aria-hidden="true"></span>
+            <div><div class="eyebrow dark">CONSULTA I DATI</div><h2>Cerca un progetto</h2></div>
+          </div>
+          <form id="search-form" class="search-form">
+            <label class="sr-only" for="cup-input">Codice CUP</label>
+            <input id="cup-input" name="cup" type="text" maxlength="15" placeholder="Inserisci il codice CUP" autocomplete="off" spellcheck="false" required>
+            <button type="submit">Cerca <span aria-hidden="true">→</span></button>
+          </form>
+          <div class="search-meta"><span id="dataset-count">Caricamento archivio…</span><button id="show-examples" class="text-button" type="button">CUP disponibili <span aria-hidden="true">⌄</span></button></div>
+          <div id="examples" class="examples" hidden></div>
+        </div>
+      </section>
+
+      <section id="message" class="message" aria-live="polite" hidden></section>
+      <section id="results" class="results content-width" aria-live="polite" hidden></section>
+
+    </main>
+
+    <footer class="site-footer"><div class="content-width"><span>IFEL · FONDAZIONE ANCI</span><span>I dati mostrati sono quelli già presenti nell’archivio locale.</span></div></footer>
+  </body>
+</html>

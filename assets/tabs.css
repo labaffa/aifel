@@ -1,0 +1,11 @@
+.result-tabs{display:flex;gap:27px;margin:25px 0 0;border-bottom:1px solid var(--gray)}
+.result-tab{position:relative;min-height:43px;padding:0 1px;border:0;background:none;color:var(--muted);font:700 14px Arial,sans-serif;cursor:pointer}
+.result-tab.is-active{color:var(--blue-text)}
+.result-tab.is-active:after{position:absolute;right:0;bottom:-1px;left:0;height:4px;background:var(--orange);content:""}
+.result-tab:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.tab-panel{padding-top:19px}
+.confidence-summary{margin:-13px 0 23px;color:var(--muted);font-size:12px}
+.project-fields{padding-top:14px}
+.project-fields .detail-field{padding:11px 13px;border-left:3px solid var(--gray);background:var(--pale)}
+
+@media(max-width:560px){.result-tabs{gap:19px}.result-tab{font-size:13px}.tab-panel{padding-top:15px}}
