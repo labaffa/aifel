@@ -543,7 +543,7 @@ function renderProject(data) {
   for (const [number, label] of [
     [profile.regis_row_count ?? '—', 'Righe progetto ReGiS'],
     [procedures.length, 'Procedure con CIG disponibili'],
-    [data.summary?.details_downloaded ?? 0, 'Schede gara con dati disponibili'],
+    [data.app_snapshot?.procedure_details_available ?? 0, 'Schede gara con dati disponibili'],
   ]) {
     const item = el('div', 'summary-item');
     item.append(el('strong', '', number), el('span', '', label));

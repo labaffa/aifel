@@ -1,0 +1,11 @@
+[project]
+name = "aifel"
+version = "0.1.0"
+description = "CUP to CIG procurement viewer"
+requires-python = ">=3.11"
+dependencies = [
+    "flask",
+]
+
+[tool.uv]
+package = false

@@ -1,45 +1,30 @@
 # aifel
 
-Portale locale per consultare le informazioni di un progetto PNRR e le sue
-procedure di gara a partire dal CUP. La ricerca legge snapshot JSON gia'
-preparati; non avvia nuove elaborazioni.
+Web app for browsing CUP procurement data from published JSON snapshots. This
+repository contains the application only. Snapshot generation and publication
+are managed from the IFEL workspace by `tools/aifel/`.
 
-## Ambiente
-
-Dalla cartella dell'app:
+## Run locally
 
 ```bash
-uv venv .venv
-uv pip install --python .venv/bin/python -r requirements.txt
+uv sync --locked
+uv run --locked python server.py
 ```
 
-L'app usa per default i dati nella cartella `dati/analisi/` del progetto IFEL,
-due livelli sopra questa cartella. Se l'app e' collocata altrove, impostare
-`AIFEL_WORKSPACE_ROOT` al percorso del progetto IFEL prima di eseguire i
-comandi seguenti. Gli snapshot e i file sorgente non sono inclusi in questo
-repository Git.
-
-## Preparare i dati
+Open <http://127.0.0.1:5058>. By default, the app looks for snapshots at
+`dati/analisi/cup_procurement_app` in the IFEL workspace. Set
+`AIFEL_SNAPSHOT_DIR` to use another directory:
 
 ```bash
-uv run --python .venv/bin/python python build_data.py
+AIFEL_SNAPSHOT_DIR=/path/to/snapshots/current uv run --locked python server.py
 ```
 
-Il comando combina l'export della pipeline, le procedure presenti nell'Excel
-integrato e le evidenze CSV in un JSON per CUP sotto
-`dati/analisi/cup_procurement_app/`. Per aggiornare un solo CUP usare
-`--cup <CUP>`. Il campo `procedure_in_app` indica quali CIG sono presenti
-nella tabella; gli altri restano nel dettaglio della pipeline. Se manca
-l'Excel integrato, `procedures_available` e' falso. Rigenerare gli snapshot
-dopo ogni modifica alle fonti.
+For deployment, set `AIFEL_SNAPSHOT_DIR` to the absolute `current` symlink in
+the server's data directory. The app needs only Flask and the published JSON
+files; it does not need Excel/CSV source files or the IFEL workspace.
 
-## Avviare il portale
+The `/api/cups` endpoint lists available CUPs. `/api/cup/<CUP>` returns one
+snapshot. The UI has overview and procedure tabs, including source evidence.
 
-```bash
-uv run --python .venv/bin/python python server.py
-```
-
-Aprire <http://127.0.0.1:5058>. I CUP disponibili sono quelli presenti negli
-snapshot locali. I risultati sono divisi nei tab `Panoramica` e
-`Procedure e CIG`. Le intestazioni della tabella ordinano le righe; cliccando
-su un CIG si apre il dettaglio con fonti ed evidenze.
+See the IFEL workspace documentation at
+`docs/18_cup_procurement_pipeline/README.md` for the build and publish steps.
