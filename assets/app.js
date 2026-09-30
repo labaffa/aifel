@@ -450,10 +450,7 @@ function makeCigDetailPanel(procedure, pipelineRecord, mobile = false) {
   ];
   for (const [title, value, wide] of definitions) {
     const section = detailSection(title, value, wide);
-    if (section) {
-      if (mobile && title === 'Dati della procedura') section.open = true;
-      sections.append(section);
-    }
+    if (section) sections.append(section);
   }
   const sources = sourceSection(
     procedure, pipelineRecord, smartcig,
