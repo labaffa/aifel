@@ -377,12 +377,9 @@ function collapsibleSection(title, wide = false) {
   return section;
 }
 
-function makeCigDetailRow(procedure, pipelineRecord, columnCount) {
-  const row = el('tr', 'cig-detail-row');
-  const cell = document.createElement('td');
-  cell.colSpan = columnCount;
+function makeCigDetailPanel(procedure, pipelineRecord, mobile = false) {
   const panel = el('div', 'cig-detail-panel');
-  const panelId = 'cig-detail-' + String(procedure.cig || '').replace(/[^A-Za-z0-9_-]/g, '-');
+  const panelId = (mobile ? 'mobile-cig-detail-' : 'cig-detail-') + String(procedure.cig || '').replace(/[^A-Za-z0-9_-]/g, '-');
   panel.id = panelId;
   panel.setAttribute('role', 'region');
   panel.setAttribute('aria-label', 'Dettaglio completo CIG ' + (procedure.cig || ''));
@@ -453,7 +450,10 @@ function makeCigDetailRow(procedure, pipelineRecord, columnCount) {
   ];
   for (const [title, value, wide] of definitions) {
     const section = detailSection(title, value, wide);
-    if (section) sections.append(section);
+    if (section) {
+      if (mobile && title === 'Dati della procedura') section.open = true;
+      sections.append(section);
+    }
   }
   const sources = sourceSection(
     procedure, pipelineRecord, smartcig,
@@ -476,7 +476,14 @@ function makeCigDetailRow(procedure, pipelineRecord, columnCount) {
   toggleAll.hidden = !collapsibleSections.length;
   updateToggleAll();
   panel.append(sections);
-  cell.append(panel);
+  return panel;
+}
+
+function makeCigDetailRow(procedure, pipelineRecord, columnCount) {
+  const row = el('tr', 'cig-detail-row');
+  const cell = document.createElement('td');
+  cell.colSpan = columnCount;
+  cell.append(makeCigDetailPanel(procedure, pipelineRecord));
   row.append(cell);
   return row;
 }
@@ -686,6 +693,29 @@ function renderProject(data) {
     table.append(body);
     tableWrap.append(table);
     proceduresPanel.append(tableWrap);
+
+    const mobileList = el('div', 'mobile-procedure-list');
+    for (const procedure of procedures) {
+      const card = el('details', 'mobile-procedure-card');
+      const summary = el('summary', 'mobile-procedure-summary');
+      const heading = el('span', 'mobile-procedure-heading');
+      heading.append(el('strong', 'mobile-procedure-code', procedure.cig || '—'));
+      heading.append(el('span', 'mobile-procedure-arrow', '⌄'));
+      summary.append(heading);
+      summary.append(el('span', 'mobile-procedure-object', procedure.tender_object || procedure.lot_object || 'Oggetto non disponibile'));
+      const facts = el('span', 'mobile-procedure-facts');
+      if (procedure.amount) facts.append(el('span', '', 'Importo: ' + formatAmount(procedure.amount)));
+      if (procedure.publication_date) facts.append(el('span', '', 'Pubblicazione: ' + dateLabel(procedure.publication_date)));
+      summary.append(facts);
+      card.append(summary);
+      card.addEventListener('toggle', () => {
+        if (!card.open || card.querySelector('.cig-detail-panel')) return;
+        const pipelineRecord = pipelineRecords.get(String(procedure.cig || '').toUpperCase());
+        card.append(makeCigDetailPanel(procedure, pipelineRecord, true));
+      });
+      mobileList.append(card);
+    }
+    proceduresPanel.append(mobileList);
   } else if (proceduresAvailable) {
     proceduresPanel.append(el('p', 'empty-state', 'Non sono state trovate procedure con CIG per questo progetto.'));
   } else {

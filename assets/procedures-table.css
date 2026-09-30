@@ -68,4 +68,33 @@
 .cig-evidence-details summary{color:var(--blue-text);font-weight:700;cursor:pointer}
 .cig-evidence-details p{margin:5px 0 0;overflow-wrap:anywhere}
 .empty-state{margin:15px 0 3px;padding:16px;border-left:4px solid var(--orange);background:var(--pale);color:var(--deep);font-size:13px}
-@media(max-width:760px){.cig-table{min-width:1080px}.cig-table th{padding:9px 6px;font-size:9px}.cig-table td{padding:7px 6px;font-size:11px}.cig-detail-sections{grid-template-columns:1fr}.cig-detail-section.is-wide{grid-column:auto}.cig-detail-panel{padding:13px 10px}.cig-detail-toolbar{align-items:flex-start}.cig-sections-toggle{font-size:10px}.detail-data-list{grid-template-columns:minmax(100px,.8fr) minmax(0,1.5fr)}.cig-source-list{grid-template-columns:1fr}}
+.mobile-procedure-list{display:none}
+@media(max-width:760px){
+  .table-scroll{display:none}
+  .mobile-procedure-list{display:grid;gap:11px;margin-top:13px}
+  .mobile-procedure-card{min-width:0;overflow:hidden;border:1px solid var(--gray);border-radius:5px;background:#fff}
+  .mobile-procedure-card[open]{border-color:#b8d7e6}
+  .mobile-procedure-summary{display:block;min-height:68px;padding:13px 14px;list-style:none;cursor:pointer}
+  .mobile-procedure-summary::-webkit-details-marker{display:none}
+  .mobile-procedure-summary:focus-visible{outline:2px solid var(--blue);outline-offset:-3px}
+  .mobile-procedure-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .mobile-procedure-code{color:var(--deep);font:700 14px ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere}
+  .mobile-procedure-arrow{color:var(--blue-text);font-size:21px;line-height:1;transition:transform .15s ease}
+  .mobile-procedure-card[open] .mobile-procedure-arrow{transform:rotate(180deg)}
+  .mobile-procedure-object{display:-webkit-box;margin-top:7px;overflow:hidden;color:var(--indigo);font-size:13px;line-height:1.4;overflow-wrap:anywhere;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+  .mobile-procedure-card[open] .mobile-procedure-object{display:block}
+  .mobile-procedure-facts{display:flex;flex-wrap:wrap;gap:3px 13px;margin-top:8px;color:var(--muted);font-size:11px;line-height:1.4}
+  .mobile-procedure-facts:empty{display:none}
+  .mobile-procedure-card .cig-detail-panel{min-width:0;padding:14px;border-top:1px solid #d8e1e8;border-bottom:0;background:#f3f7fa}
+  .cig-detail-sections{grid-template-columns:1fr}
+  .cig-detail-section.is-wide{grid-column:auto}
+  .cig-detail-toolbar{align-items:flex-start}
+  .cig-detail-title{font-size:14px}
+  .cig-sections-toggle{min-height:36px;font-size:10px}
+  .cig-section-summary{min-height:38px}
+  .mobile-procedure-card .detail-data-list{display:block;font-size:12px}
+  .mobile-procedure-card .detail-data-list dt{padding:9px 0 2px;border-top:1px solid #edf0f2}
+  .mobile-procedure-card .detail-data-list dd{padding:0 0 9px;border-top:0}
+  .mobile-procedure-card .detail-data-list .detail-data-list{margin:5px 0;padding-left:10px}
+  .cig-source-list{grid-template-columns:1fr}
+}
