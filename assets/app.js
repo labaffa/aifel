@@ -61,7 +61,7 @@ function formatAmount(value) {
 
 function dateLabel(value) {
   const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match ? match[3] + '/' + match[2] + '/' + match[1] : value || '—';
+  return match ? match[3] + '/' + match[2] + '/' + match[1] : '—';
 }
 
 const detailLabels = {
@@ -633,6 +633,9 @@ function renderProject(data) {
           const a = String(left[key] || '').trim();
           const b = String(right[key] || '').trim();
           if (!a || !b) return !a && !b ? 0 : (!a ? 1 : -1);
+          if (['publication_date', 'offer_deadline', 'result_communication_date'].includes(key)) {
+            return (a < b ? -1 : a > b ? 1 : 0) * sortState.direction;
+          }
           if (key === 'amount') {
             const numberA = Number(a.includes(',') ? a.replaceAll('.', '').replace(',', '.') : a);
             const numberB = Number(b.includes(',') ? b.replaceAll('.', '').replace(',', '.') : b);

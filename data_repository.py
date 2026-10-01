@@ -12,6 +12,7 @@ from typing import Any, Iterator
 
 import psycopg
 from psycopg.rows import dict_row
+from date_utils import iso_date, normalize_date_fields
 
 INVALID_DETAIL_URL = re.compile(r'^https://dati\.anticorruzione\.it/superset/dashboard/dettaglio_cig/',re.I)
 LOCAL_PATH = re.compile(r'^(?:/|\\\\|[A-Za-z]:[\\/]|file://|\.{1,2}/|dati/)',re.I)
@@ -118,9 +119,9 @@ def procedure(row: dict,evidence: list[dict]) -> dict:
             'framework_cig':value_text(row['framework_cig']),
             'tender_object':value_text(row['tender_object']),
             'lot_object':value_text(tender.get('OGGETTO_LOTTO')) or value_text(row['tender_object']),
-            'publication_date':value_text(row['publication_date']) or value_text(publications.get('DATA_PUBBLICAZIONE')),
-            'offer_deadline':value_text(tender.get('DATA_SCADENZA_OFFERTA')),
-            'result_communication_date':value_text(tender.get('DATA_COMUNICAZIONE_ESITO')),
+            'publication_date':iso_date(row['publication_date']) or iso_date(publications.get('DATA_PUBBLICAZIONE')),
+            'offer_deadline':iso_date(tender.get('DATA_SCADENZA_OFFERTA')),
+            'result_communication_date':iso_date(tender.get('DATA_COMUNICAZIONE_ESITO')),
             'amount':value_text(row['amount']),
             'provenance':provenance(evidence),'evidence_sources':evidence}
 
@@ -144,6 +145,7 @@ def cup_payload(connection: psycopg.Connection,cup: str) -> dict | None:
     # Use the typed lot amount also in the expandable detail. The original JSON
     # is retained in PostgreSQL; it is not a fallback for a missing canonical value.
     for row in associations:
+        row['detail'] = normalize_date_fields(row['detail'])
         row['detail']['amount'] = value_text(row['amount']) or None
         standard = row['detail'].get('smartcig_like')
         if isinstance(standard,dict):

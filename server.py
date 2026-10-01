@@ -57,6 +57,9 @@ def cup_data(cup: str) -> Any:
     if normalized not in available_cups(data_root):
         abort(404, description="No snapshot exists for this CUP.")
     payload = json.loads((data_root / f"{normalized}.json").read_text(encoding="utf-8"))
+    for item in payload.get('cigs',[]):
+        item['detail'] = data_repository.normalize_date_fields(item.get('detail') or {})
+    payload = data_repository.normalize_date_fields(payload)
     return jsonify(payload)
 
 

@@ -40,6 +40,15 @@ contract retains overview, procedure and evidence data, and adds
 review and available reviewed procedures. Every canonical CLP row is retained
 in `project_profile.projects`; procurement linkage remains CUP-level.
 
+Procurement calendar dates use ISO `YYYY-MM-DD` in the API and `DD/MM/YYYY`
+in the interface. ISO timestamps, full Italian month names and explicitly
+day-first numeric dates with four-digit years are normalized. Unsupported or
+invalid dates become null; `date_validation` preserves original source values
+and conversion outcomes. Acquisition timestamps keep their time component.
+The IFEL pipeline and loader share `date_utils.py` with the application.
+After upgrading date normalization, regenerate curated publications with the
+current code before loading them; their checksums include the API response.
+
 A database error returns HTTP 503 without exposing connection details. There
 is no automatic fallback to potentially stale snapshots.
 
