@@ -5,6 +5,22 @@ const results = document.querySelector('#results');
 const examples = document.querySelector('#examples');
 const examplesButton = document.querySelector('#show-examples');
 const datasetCount = document.querySelector('#dataset-count');
+let repositoryMessages = {
+  notCollected: 'Procurement collection has not been run for this project yet.',
+  awaitingReview: 'Collected procedures are awaiting review.',
+  reviewedEmpty: 'No procedures were included after review.',
+  unknownCup: 'No project or procurement data was found for this CUP.',
+  collectedCups: 'CUP with collected procurement. Search any project CUP.',
+  canonicalProjects: 'Projects associated with this CUP',
+  project: 'Project',
+};
+const messagesReady = fetch('/assets/messages.it.json')
+  .then((response) => {
+    if (!response.ok) throw new Error('Translations unavailable.');
+    return response.json();
+  })
+  .then((translations) => { repositoryMessages = { ...repositoryMessages, ...translations }; })
+  .catch(() => {});
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -561,10 +577,21 @@ function renderProject(data) {
     if (value !== undefined && value !== null && value !== '') addField(projectGrid, label, value);
   }
   for (const [label, value] of Object.entries(profile)) {
-    if (label === 'project' || value === undefined || value === null || value === '') continue;
+    if (label === 'project' || label === 'projects' || value === undefined || value === null || value === '') continue;
     addField(projectGrid, label.replaceAll('_', ' '), value);
   }
   overviewPanel.append(projectGrid);
+  if (profile.projects?.length > 1) {
+    overviewPanel.append(el('h3', 'section-title', repositoryMessages.canonicalProjects));
+    for (const canonicalProject of profile.projects) {
+      const section = el('details', 'cig-section');
+      section.append(el('summary', '', repositoryMessages.project + ' ' + canonicalProject['Codice Locale Progetto']));
+      const fields = el('div', 'detail-grid project-fields');
+      for (const [label, value] of Object.entries(canonicalProject)) addField(fields, label, value);
+      section.append(fields);
+      overviewPanel.append(section);
+    }
+  }
 
   const proceduresPanel = el('section', 'tab-panel');
   proceduresPanel.id = 'panel-procedures';
@@ -713,6 +740,12 @@ function renderProject(data) {
       mobileList.append(card);
     }
     proceduresPanel.append(mobileList);
+  } else if (data.collection_status === 'not_collected') {
+    proceduresPanel.append(el('p', 'empty-state', repositoryMessages.notCollected));
+  } else if (data.collection_status === 'awaiting_review') {
+    proceduresPanel.append(el('p', 'empty-state', repositoryMessages.awaitingReview));
+  } else if (data.collection_status === 'reviewed_empty') {
+    proceduresPanel.append(el('p', 'empty-state', repositoryMessages.reviewedEmpty));
   } else if (proceduresAvailable) {
     proceduresPanel.append(el('p', 'empty-state', 'Non sono state trovate procedure con CIG per questo progetto.'));
   } else {
@@ -742,6 +775,7 @@ function renderProject(data) {
 }
 
 async function searchCup(cup) {
+  await messagesReady;
   const normalized = cup.trim().toUpperCase();
   input.value = normalized;
   results.hidden = true;
@@ -753,7 +787,7 @@ async function searchCup(cup) {
   showMessage('Sto cercando i dati locali…');
   try {
     const response = await fetch('/api/cup/' + encodeURIComponent(normalized));
-    if (response.status === 404) throw new Error('Non troviamo ancora dati per questo CUP. L’archivio contiene solo le elaborazioni già disponibili.');
+    if (response.status === 404) throw new Error(repositoryMessages.unknownCup);
     if (!response.ok) throw new Error('La richiesta non è andata a buon fine. Riprova tra poco.');
     const data = await response.json();
     message.hidden = true;
@@ -771,9 +805,15 @@ examplesButton.addEventListener('click', () => {
   examplesButton.innerHTML = examples.hidden ? 'CUP disponibili <span aria-hidden="true">⌄</span>' : 'Nascondi CUP disponibili <span aria-hidden="true">⌃</span>';
 });
 
-fetch('/api/cups').then((response) => response.json()).then(({ cups }) => {
+fetch('/api/cups').then((response) => {
+  if (!response.ok) throw new Error('Data service is unavailable.');
+  return response.json();
+}).then(async ({ cups, data_source }) => {
+  await messagesReady;
   const availableCups = cups || [];
-  datasetCount.textContent = availableCups.length + ' CUP con dati già disponibili';
+  datasetCount.textContent = data_source === 'postgres'
+    ? availableCups.length + ' ' + repositoryMessages.collectedCups
+    : availableCups.length + ' CUP con dati già disponibili';
   examples.replaceChildren();
   for (const cup of availableCups) {
     const button = el('button', 'example-chip', cup);

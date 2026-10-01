@@ -1,0 +1,9 @@
+{
+  "notCollected": "La raccolta delle procedure non è ancora stata eseguita per questo progetto.",
+  "awaitingReview": "Le procedure raccolte sono in attesa di revisione.",
+  "reviewedEmpty": "Nessuna procedura è stata inclusa dopo la revisione.",
+  "unknownCup": "Non sono stati trovati progetti o dati sulle procedure per questo CUP.",
+  "collectedCups": "CUP con procedure raccolte. Puoi cercare qualsiasi CUP presente nell’archivio.",
+  "canonicalProjects": "Progetti associati al CUP",
+  "project": "Progetto"
+}
