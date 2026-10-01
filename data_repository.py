@@ -121,7 +121,7 @@ def procedure(row: dict,evidence: list[dict]) -> dict:
             'publication_date':value_text(row['publication_date']) or value_text(publications.get('DATA_PUBBLICAZIONE')),
             'offer_deadline':value_text(tender.get('DATA_SCADENZA_OFFERTA')),
             'result_communication_date':value_text(tender.get('DATA_COMUNICAZIONE_ESITO')),
-            'amount':value_text(row['amount']) or value_text(tender.get('IMPORTO_LOTTO')) or value_text(detail.get('amount')),
+            'amount':value_text(row['amount']),
             'provenance':provenance(evidence),'evidence_sources':evidence}
 
 
@@ -141,6 +141,13 @@ def cup_payload(connection: psycopg.Connection,cup: str) -> dict | None:
     profile = project_profile(cup,rows,fallback)
     associations = connection.execute('''SELECT * FROM curato.v_procurement_cup_cig
         WHERE cup=%s ORDER BY cig''',(cup,)).fetchall() if run else []
+    # Use the typed lot amount also in the expandable detail. The original JSON
+    # is retained in PostgreSQL; it is not a fallback for a missing canonical value.
+    for row in associations:
+        row['detail']['amount'] = value_text(row['amount']) or None
+        standard = row['detail'].get('smartcig_like')
+        if isinstance(standard,dict):
+            standard.setdefault('bando',{})['IMPORTO_LOTTO'] = value_text(row['amount']) or None
     grouped: dict[str,list] = {}
     if run:
         evidence = connection.execute('''SELECT * FROM curato.v_procurement_evidence

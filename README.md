@@ -43,6 +43,10 @@ in `project_profile.projects`; procurement linkage remains CUP-level.
 A database error returns HTTP 503 without exposing connection details. There
 is no automatic fallback to potentially stale snapshots.
 
+Lot amounts come exclusively from the typed numeric database column, including
+the expandable tender detail. Raw award/payment text is never used as a lot
+amount fallback. Missing or invalidated lot amounts remain unavailable.
+
 ## Snapshot backend
 
 To run against published JSON files explicitly:
