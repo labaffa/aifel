@@ -13,6 +13,9 @@ let repositoryMessages = {
   collectedCups: 'CUP with collected procurement. Search any project CUP.',
   canonicalProjects: 'Projects associated with this CUP',
   project: 'Project',
+  lotAmount: 'Lot amount',
+  awardAmount: 'Awarded',
+  liquidatedAmount: 'Liquidated',
 };
 const messagesReady = fetch('/assets/messages.it.json')
   .then((response) => {
@@ -48,7 +51,7 @@ function addField(grid, label, value) {
 }
 
 function formatAmount(value) {
-  const raw = String(value || '').trim();
+  const raw = String(value ?? '').trim();
   if (!raw) return '—';
   const normalized = raw.includes(',')
     ? raw.replaceAll('.', '').replace(',', '.')
@@ -610,7 +613,9 @@ function renderProject(data) {
       ['cig', 'CIG'], ['tender_object', 'Oggetto gara'], ['lot_object', 'Oggetto lotto'],
       ['framework_cig', 'CIG accordo quadro'], ['publication_date', 'Pubblicazione bando'],
       ['offer_deadline', 'Scadenza offerte'], ['result_communication_date', 'Comunicazione esito'],
-      ['amount', 'Importo lotto'], ['provenance', 'Come è collegato'], ['source_url', 'Fonte principale'],
+      ['amount', repositoryMessages.lotAmount], ['award_amount', repositoryMessages.awardAmount],
+      ['liquidated_amount', repositoryMessages.liquidatedAmount],
+      ['provenance', 'Come è collegato'], ['source_url', 'Fonte principale'],
     ];
     const headers = new Map();
     const pipelineRecords = new Map((data.cigs || []).map((record) => [String(record.cig || '').toUpperCase(), record]));
@@ -630,13 +635,13 @@ function renderProject(data) {
         }
         const collator = new Intl.Collator('it', { numeric: true, sensitivity: 'base' });
         const ordered = [...procedures].sort((left, right) => {
-          const a = String(left[key] || '').trim();
-          const b = String(right[key] || '').trim();
+          const a = String(left[key] ?? '').trim();
+          const b = String(right[key] ?? '').trim();
           if (!a || !b) return !a && !b ? 0 : (!a ? 1 : -1);
           if (['publication_date', 'offer_deadline', 'result_communication_date'].includes(key)) {
             return (a < b ? -1 : a > b ? 1 : 0) * sortState.direction;
           }
-          if (key === 'amount') {
+          if (['amount', 'award_amount', 'liquidated_amount'].includes(key)) {
             const numberA = Number(a.includes(',') ? a.replaceAll('.', '').replace(',', '.') : a);
             const numberB = Number(b.includes(',') ? b.replaceAll('.', '').replace(',', '.') : b);
             if (Number.isFinite(numberA) && Number.isFinite(numberB)) return (numberA - numberB) * sortState.direction;
@@ -700,6 +705,8 @@ function renderProject(data) {
       row.append(el('td', 'cig-table-date', dateLabel(procedure.offer_deadline)));
       row.append(el('td', 'cig-table-date', dateLabel(procedure.result_communication_date)));
       row.append(el('td', 'cig-table-amount', formatAmount(procedure.amount)));
+      row.append(el('td', 'cig-table-amount', formatAmount(procedure.award_amount)));
+      row.append(el('td', 'cig-table-amount', formatAmount(procedure.liquidated_amount)));
       const labels = provenanceForDisplay(procedure.provenance).split(';').map((label) => label.trim()).filter(Boolean);
       row.append(expandableCell(labels.join(' · '), 'cig-table-provenance'));
       const sourceCell = document.createElement('td');
@@ -731,7 +738,12 @@ function renderProject(data) {
       summary.append(heading);
       summary.append(el('span', 'mobile-procedure-object', procedure.tender_object || procedure.lot_object || 'Oggetto non disponibile'));
       const facts = el('span', 'mobile-procedure-facts');
-      if (procedure.amount) facts.append(el('span', '', 'Importo: ' + formatAmount(procedure.amount)));
+      for (const [key, label] of [
+        ['amount', repositoryMessages.lotAmount], ['award_amount', repositoryMessages.awardAmount],
+        ['liquidated_amount', repositoryMessages.liquidatedAmount],
+      ]) {
+        if (hasDetailValue(procedure[key])) facts.append(el('span', '', label + ': ' + formatAmount(procedure[key])));
+      }
       if (procedure.publication_date) facts.append(el('span', '', 'Pubblicazione: ' + dateLabel(procedure.publication_date)));
       summary.append(facts);
       card.append(summary);

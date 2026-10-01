@@ -12,6 +12,7 @@ from flask import Flask, abort, jsonify, send_from_directory
 import psycopg
 
 import data_repository
+from amount_utils import enrichment_amounts
 
 DEFAULT_SNAPSHOT_DIR = Path(__file__).resolve().parents[2] / "dati" / "analisi" / "cup_procurement_app"
 APP_DATA_ROOT = Path(os.environ.get("AIFEL_SNAPSHOT_DIR", DEFAULT_SNAPSHOT_DIR))
@@ -59,6 +60,9 @@ def cup_data(cup: str) -> Any:
     payload = json.loads((data_root / f"{normalized}.json").read_text(encoding="utf-8"))
     for item in payload.get('cigs',[]):
         item['detail'] = data_repository.normalize_date_fields(item.get('detail') or {})
+    details_by_cig = {item['cig']:item.get('detail') or {} for item in payload.get('cigs',[])}
+    for item in payload.get('procedures',[]):
+        item.update(enrichment_amounts(details_by_cig.get(item['cig'],{})))
     payload = data_repository.normalize_date_fields(payload)
     return jsonify(payload)
 

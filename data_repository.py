@@ -13,6 +13,7 @@ from typing import Any, Iterator
 import psycopg
 from psycopg.rows import dict_row
 from date_utils import iso_date, normalize_date_fields
+from amount_utils import enrichment_amounts
 
 INVALID_DETAIL_URL = re.compile(r'^https://dati\.anticorruzione\.it/superset/dashboard/dettaglio_cig/',re.I)
 LOCAL_PATH = re.compile(r'^(?:/|\\\\|[A-Za-z]:[\\/]|file://|\.{1,2}/|dati/)',re.I)
@@ -123,6 +124,7 @@ def procedure(row: dict,evidence: list[dict]) -> dict:
             'offer_deadline':iso_date(tender.get('DATA_SCADENZA_OFFERTA')),
             'result_communication_date':iso_date(tender.get('DATA_COMUNICAZIONE_ESITO')),
             'amount':value_text(row['amount']),
+            **enrichment_amounts(detail),
             'provenance':provenance(evidence),'evidence_sources':evidence}
 
 

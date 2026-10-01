@@ -5,5 +5,8 @@
   "unknownCup": "Non sono stati trovati progetti o dati sulle procedure per questo CUP.",
   "collectedCups": "CUP con procedure raccolte. Puoi cercare qualsiasi CUP presente nell’archivio.",
   "canonicalProjects": "Progetti associati al CUP",
-  "project": "Progetto"
+  "project": "Progetto",
+  "lotAmount": "Importo lotto",
+  "awardAmount": "Aggiudicato",
+  "liquidatedAmount": "Liquidato"
 }

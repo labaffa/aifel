@@ -56,6 +56,13 @@ Lot amounts come exclusively from the typed numeric database column, including
 the expandable tender detail. Raw award/payment text is never used as a lot
 amount fallback. Missing or invalidated lot amounts remain unavailable.
 
+The procedure table shows separate lot, awarded and liquidated amount columns.
+`procedures[].award_amount` and `liquidated_amount` are nonnegative decimal
+strings from the structured enrichment fields; missing or invalid values are
+null. Explicit zero is displayed as zero, not as unavailable. Columns sort
+independently; mobile cards show the available amounts with separate labels.
+No database schema change is required to expose existing enrichment amounts.
+
 ## Snapshot backend
 
 To run against published JSON files explicitly:

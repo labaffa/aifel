@@ -1,14 +1,14 @@
 .table-scroll{overflow-x:auto;margin-top:13px;border:1px solid var(--gray)}
-.cig-table{width:100%;min-width:1080px;table-layout:fixed;border-collapse:collapse;color:var(--indigo);font-size:12px}
+.cig-table{width:100%;min-width:1320px;table-layout:fixed;border-collapse:collapse;color:var(--indigo);font-size:12px}
 .cig-table th{padding:10px 8px;background:var(--deep);color:var(--white);font-size:10px;font-weight:700;text-align:left}
-.cig-table th:nth-child(1){width:8%}
-.cig-table th:nth-child(2){width:21%}
-.cig-table th:nth-child(3){width:13%}
-.cig-table th:nth-child(4){width:9%}
-.cig-table th:nth-child(5),.cig-table th:nth-child(6),.cig-table th:nth-child(7){width:8%}
-.cig-table th:nth-child(8){width:8%}
-.cig-table th:nth-child(9){width:10%}
-.cig-table th:nth-child(10){width:7%}
+.cig-table th:nth-child(1){width:7%}
+.cig-table th:nth-child(2){width:17%}
+.cig-table th:nth-child(3){width:11%}
+.cig-table th:nth-child(4){width:7%}
+.cig-table th:nth-child(5),.cig-table th:nth-child(6),.cig-table th:nth-child(7){width:7%}
+.cig-table th:nth-child(8),.cig-table th:nth-child(9),.cig-table th:nth-child(10){width:8%}
+.cig-table th:nth-child(11){width:8%}
+.cig-table th:nth-child(12){width:5%}
 .sort-button{padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:700;text-align:left;cursor:pointer}
 .sort-button:hover,.sort-button:focus-visible{color:#F26B10}
 .cig-table td{height:54px;padding:7px 8px;border-bottom:1px solid var(--gray);vertical-align:middle;line-height:1.35;overflow-wrap:anywhere}
