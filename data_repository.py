@@ -14,9 +14,11 @@ import psycopg
 from psycopg.rows import dict_row
 from date_utils import iso_date, normalize_date_fields
 from amount_utils import enrichment_amounts
+import consultation_repository
 
 INVALID_DETAIL_URL = re.compile(r'^https://dati\.anticorruzione\.it/superset/dashboard/dettaglio_cig/',re.I)
 LOCAL_PATH = re.compile(r'^(?:/|\\\\|[A-Za-z]:[\\/]|file://|\.{1,2}/|dati/)',re.I)
+IDENTIFIER_FIELDS = {'cup','cig','codice_locale_progetto','codice locale progetto','phase_value'}
 PROJECT_FIELDS = {
     'cup': 'CUP', 'codice_locale_progetto': 'Codice Locale Progetto',
     'titolo_progetto': 'Titolo Progetto', 'sintesi_progetto': 'Sintesi Progetto',
@@ -36,7 +38,7 @@ def public_value(value: Any) -> Any:
     if isinstance(value,dict):
         return {key:public_value(item) for key,item in value.items()
                 if key.lower() != 'path' and not key.lower().endswith(('_path','_paths'))
-                and not (isinstance(item,str) and LOCAL_PATH.match(item))}
+                and not (key.lower() not in IDENTIFIER_FIELDS and isinstance(item,str) and LOCAL_PATH.match(item))}
     if isinstance(value,list):
         return [public_value(item) for item in value
                 if not (isinstance(item,str) and LOCAL_PATH.match(item))]
@@ -64,6 +66,15 @@ def available_cups(connection: psycopg.Connection) -> list[str]:
     """Return examples with collected procurement, not the entire project register."""
     return [row['cup'] for row in connection.execute(
         'SELECT cup FROM curato.v_procurement_latest_run ORDER BY cup')]
+
+
+def publication_status(connection: psycopg.Connection) -> dict:
+    marker = connection.execute("SELECT to_regclass('curato.aifel_publication') AS marker").fetchone()
+    if marker['marker'] is None:
+        return {'data_source':'postgres','publication':None}
+    row = connection.execute('''SELECT version,content_sha256,published_at,manifest
+        FROM curato.aifel_publication WHERE singleton''').fetchone()
+    return public_value({'data_source':'postgres','publication':row})
 
 
 def project_profile(cup: str,rows: list[dict],fallback: dict) -> dict:
@@ -128,9 +139,16 @@ def procedure(row: dict,evidence: list[dict]) -> dict:
             'provenance':provenance(evidence),'evidence_sources':evidence}
 
 
-def cup_payload(connection: psycopg.Connection,cup: str) -> dict | None:
-    rows = connection.execute('''SELECT * FROM curato.v_progetti_misura
-        WHERE cup=%s ORDER BY codice_locale_progetto''',(cup,)).fetchall()
+def cup_payload(connection: psycopg.Connection,cup: str, *, include_consultation: bool = True) -> dict | None:
+    consultation_rows = (consultation_repository.projects(connection,cup)
+                         if include_consultation and consultation_repository.available(connection) else None)
+    if consultation_rows is None:
+        rows = connection.execute('''SELECT * FROM curato.v_progetti_misura
+            WHERE cup=%s ORDER BY codice_locale_progetto''',(cup,)).fetchall()
+    else:
+        rows = [{**row, 'titolo_misura':row['descrizione_misura'], 'codice_misura':row['id_misura'],
+                 'fase_iter_corrente':row['descrizione_fase_iter_progetto'],
+                 'stato_fase_iter_corrente':row['stato_fase_iter_progetto']} for row in consultation_rows]
     run = connection.execute('SELECT * FROM curato.v_procurement_latest_run WHERE cup=%s',(cup,)).fetchone()
     if not rows and run is None:
         return None
@@ -178,4 +196,6 @@ def cup_payload(connection: psycopg.Connection,cup: str) -> dict | None:
                         'generated_at_utc':run['loaded_at'] if run else None,
                         'procedure_details_available':sum(row['detail'].get('status')=='downloaded'
                             for row in associations if row['procedure_in_app'])}}
+    if consultation_rows is not None:
+        payload['consultation'] = consultation_repository.summary(connection,cup,consultation_rows)
     return public_value(payload)

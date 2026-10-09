@@ -1,0 +1,91 @@
+.consultation-projects { margin-top: 2rem; }
+.consultation-project { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid #d5e1e6; border-radius: .75rem; }
+.consultation-project h4 { margin: 0 0 .5rem; overflow-wrap: anywhere; }
+.consultation-section { border-top: 1px solid #d5e1e6; margin-top: .75rem; }
+.consultation-section > summary { cursor: pointer; padding: .85rem 0; font-weight: 600; }
+.consultation-body { padding-bottom: .75rem; }
+.consultation-row { background: #f5f8fa; padding: 1rem; margin: .75rem 0; border-radius: .5rem; }
+.consultation-source { font-size: .82rem; color: #526771; overflow-wrap: anywhere; }
+.consultation-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0 0; }
+.consultation-field dt { font-size: .78rem; color: #526771; }
+.consultation-field dd { margin: .25rem 0 0; overflow-wrap: anywhere; }
+.consultation-note { font-size: .85rem; color: #526771; line-height: 1.5; }
+.consultation-more { margin-top: .75rem; }
+@media (max-width: 600px) { .consultation-project { padding: .75rem; } .consultation-fields { grid-template-columns: 1fr; } }
+.result-tabs { flex-wrap: wrap; column-gap: 22px; row-gap: 4px; }
+.result-tab { max-width: 100%; overflow-wrap: anywhere; text-align: left; }
+.tab-panel[hidden] { display: none; }
+.clp-heading { margin-bottom: .4rem; overflow-wrap: anywhere; }
+.clp-summary-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1rem; }
+.clp-summary-card { border: 1px solid #d5e1e6; border-radius: .6rem; padding: 1rem; min-width: 0; }
+.clp-summary-card h3 { font-size: 1rem; overflow-wrap: anywhere; }
+.clp-chooser { display: grid; gap: .75rem; margin-top: 1.5rem; }
+.location-filter, .clp-select { box-sizing: border-box; width: 100%; max-width: 100%; padding: .7rem; border: 1px solid #b9cad1; border-radius: .3rem; font: inherit; }
+.compact-location { display: grid; gap: .35rem; padding: .7rem 0; border-bottom: 1px solid #e1e8ec; overflow-wrap: anywhere; }
+.all-locations > summary { cursor: pointer; padding: .8rem 0; color: var(--blue-text); font-weight: bold; }
+.implementer-summary { overflow-wrap: anywhere; }
+.tender-card { margin: .7rem 0; border: 1px solid #d5e1e6; border-radius: .5rem; padding: .85rem; }
+.tender-card > summary { display: grid; gap: .5rem; cursor: pointer; overflow-wrap: anywhere; }
+.investigation-status { padding: .8rem; background: #eef5f8; border-left: 3px solid var(--orange); }
+@media(max-width:560px) { .result-tabs { column-gap: 15px; } .tender-card { padding: .65rem; } }
+.native-tenders-mobile { display: none; }
+.native-tenders-desktop td { max-width: 320px; overflow-wrap: anywhere; }
+@media(max-width:760px) { .native-tenders-desktop { display: none; } .native-tenders-mobile { display: block; } }
+.clp-tabs .result-tab { max-width: 280px; padding-bottom: .5rem; }
+.project-fields .compact-location { gap: .25rem; padding: .5rem 0; }
+.project-fields .compact-location:first-child { padding-top: 0; }
+.project-fields .compact-location:last-child { padding-bottom: 0; border-bottom: 0; }
+.project-fields .detail-field .consultation-source,
+.project-fields .detail-field .consultation-note { margin: .35rem 0 0; color: var(--muted); font-size: 11px; }
+.project-fields .location-field .all-locations > summary { font-size: 12px; padding: .65rem 0 0; }
+.project-fields .location-field .location-filter { margin-top: .6rem; font-size: 13px; }
+.unified-tender-detail .consultation-row { margin: 0; padding: .5rem 0; background: transparent; }
+.unified-tender-detail .consultation-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.unified-tender-detail .cig-detail-toolbar .consultation-note { margin: 0; }
+@media(max-width:600px) { .unified-tender-detail .consultation-fields { grid-template-columns: 1fr; } }
+.overview-section { margin: 24px 0; }
+.overview-section > .section-title { margin: 0 0 12px; }
+.overview-snapshot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.overview-finance { display: contents; }
+.overview-metric { display: grid; align-content: start; gap: .6rem; padding: 16px; border: 1px solid #d5e1e6; border-top: 3px solid var(--blue); border-radius: 4px; background: #f7fafb; min-width: 0; }
+.metric-label { display: block; color: var(--muted); font-size: 11px; font-weight: bold; text-transform: uppercase; }
+.overview-metric strong { font-size: 21px; overflow-wrap: anywhere; }
+.project-heading-metadata { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+.cup-investigation-tag { display: inline-block; padding: 6px 9px; border: 1px solid #d5e1e6; border-radius: 4px; background: #f7fafb; color: var(--muted); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.cup-investigation-tag.is-available { background: #eef7f2; border-color: #c5dfd0; color: #216342; }
+@media(max-width:560px) { .project-heading-metadata { justify-content: flex-start; margin-top: 12px; } .project-heading-metadata .cup-code { margin-top: 0; } }
+.metric-warning { color: #8d4110; font-size: 12px; line-height: 1.5; }
+.overview-finance > .metric-warning { grid-column: 1 / -1; }
+.optional-fields { margin-top: .75rem; }
+.optional-fields > summary, .indicator-observations > summary { color: var(--blue-text); font-size: 12px; cursor: pointer; }
+.phase-timeline { list-style: none; padding: 0 0 0 18px; margin: 1rem 0; border-left: 2px solid #d5e1e6; }
+.phase-step { position: relative; padding: 14px; margin-bottom: 12px; border: 1px solid #d5e1e6; border-radius: 4px; }
+.phase-step::before { content: ''; position: absolute; left: -25px; top: 20px; width: 10px; height: 10px; border: 2px solid white; border-radius: 50%; background: var(--blue); }
+.phase-heading { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.phase-heading h4 { margin: 0; font-size: 14px; }
+.phase-state { padding: 4px 7px; border-radius: 3px; background: #eef4f7; color: var(--deep); font-size: 11px; }
+.phase-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 12px; }
+.phase-dates p { font-size: 12px; line-height: 1.5; margin: .4rem 0 0; }
+.indicator-table-wrap { overflow-x: auto; margin-top: 1rem; }
+.indicator-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.indicator-table th { text-align: left; color: var(--deep); background: #eef4f7; padding: 10px; }
+.indicator-table td { padding: 12px 10px; vertical-align: top; border-bottom: 1px solid #d5e1e6; overflow-wrap: anywhere; }
+.indicator-code { display: block; margin-top: .4rem; color: var(--muted); }
+.indicator-observations .consultation-row { min-width: 240px; }
+@media(max-width:760px) { .overview-snapshot { grid-template-columns: 1fr; } .overview-metric strong { font-size: 19px; } }
+@media(max-width:600px) {
+  .phase-dates { grid-template-columns: 1fr; gap: 12px; }
+  .indicator-table thead { display: none; }
+  .indicator-table, .indicator-table tbody { display: block; }
+  .indicator-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid #d5e1e6; border-radius: 4px; margin-bottom: 12px; }
+  .indicator-table td { min-width: 0; border: 0; }
+  .indicator-table td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+  .indicator-table td:first-child, .indicator-table td:nth-child(6), .indicator-table td:last-child { grid-column: 1 / -1; }
+  .indicator-observations .consultation-row { min-width: 0; }
+}
+.indicator-table th:nth-child(2), .indicator-table td:nth-child(2) { min-width: 64px; overflow-wrap: normal; }
+@media(min-width:601px) { .indicator-table th:nth-child(2), .indicator-table td:nth-child(2) { white-space: nowrap; } }
+.overview-phases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.phase-field-name { color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.phase-observation .consultation-source { font-weight: bold; color: var(--deep); }
+@media(max-width:760px) { .overview-phases, .overview-snapshot { grid-template-columns: 1fr; } }

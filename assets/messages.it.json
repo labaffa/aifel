@@ -1,4 +1,5 @@
 {
+  "publishedAt": "Dati pubblicati il",
   "notCollected": "La raccolta delle procedure non è ancora stata eseguita per questo progetto.",
   "awaitingReview": "Le procedure raccolte sono in attesa di revisione.",
   "reviewedEmpty": "Nessuna procedura è stata inclusa dopo la revisione.",

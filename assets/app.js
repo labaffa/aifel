@@ -6,6 +6,7 @@ const examples = document.querySelector('#examples');
 const examplesButton = document.querySelector('#show-examples');
 const datasetCount = document.querySelector('#dataset-count');
 let repositoryMessages = {
+  publishedAt: 'Data published on',
   notCollected: 'Procurement collection has not been run for this project yet.',
   awaitingReview: 'Collected procedures are awaiting review.',
   reviewedEmpty: 'No procedures were included after review.',
@@ -24,6 +25,18 @@ const messagesReady = fetch('/assets/messages.it.json')
   })
   .then((translations) => { repositoryMessages = { ...repositoryMessages, ...translations }; })
   .catch(() => {});
+
+fetch('/api/publication').then((response) => {
+  if (!response.ok) throw new Error('Publication status unavailable.');
+  return response.json();
+}).then(async ({ publication }) => {
+  await messagesReady;
+  if (!publication?.published_at) return;
+  const status = document.querySelector('#publication-status');
+  status.textContent = repositoryMessages.publishedAt + ' '
+    + new Intl.DateTimeFormat('it-IT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(publication.published_at));
+  status.hidden = false;
+}).catch(() => {});
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -249,6 +262,7 @@ function sourceSection(procedure, pipelineRecord, smartcig, association) {
   }
   if (!groups.size && !hasDetailValue(association)) return null;
   const section = collapsibleSection('Collegamento CUP–CIG', true);
+  section.classList.add('cig-provenance-section');
   if (association?.status) section.append(el('p', 'cig-link-status', association.status));
   if (association?.summary) section.append(el('p', 'cig-link-summary', association.summary));
   const sourceOrder = [
@@ -396,14 +410,14 @@ function collapsibleSection(title, wide = false) {
   return section;
 }
 
-function makeCigDetailPanel(procedure, pipelineRecord, mobile = false) {
+function makeCigDetailPanel(procedure, pipelineRecord, mobile = false, options = {}) {
   const panel = el('div', 'cig-detail-panel');
   const panelId = (mobile ? 'mobile-cig-detail-' : 'cig-detail-') + String(procedure.cig || '').replace(/[^A-Za-z0-9_-]/g, '-');
   panel.id = panelId;
   panel.setAttribute('role', 'region');
   panel.setAttribute('aria-label', 'Dettaglio completo CIG ' + (procedure.cig || ''));
   const toolbar = el('div', 'cig-detail-toolbar');
-  toolbar.append(el('h3', 'cig-detail-title', 'Dettaglio CIG ' + (procedure.cig || '')));
+  if (!options.compact) toolbar.append(el('h3', 'cig-detail-title', 'Dettaglio CIG ' + (procedure.cig || '')));
   const toggleAll = el('button', 'cig-sections-toggle', 'Espandi tutte');
   toggleAll.type = 'button';
   toolbar.append(toggleAll);
@@ -423,6 +437,11 @@ function makeCigDetailPanel(procedure, pipelineRecord, mobile = false) {
     amount: procedure.amount,
     source_url: procedure.source_url,
   };
+  if (options.compact) {
+    delete procedureData.CIG;
+    if (procedureData.tender_object === options.nativeObject) delete procedureData.tender_object;
+    if (procedureData.lot_object === options.nativeObject) delete procedureData.lot_object;
+  }
   const bando = selectedFields(smartcig.bando, [
     'CIG', 'CIG_ACCORDO_QUADRO', 'CUP', 'NUMERO_GARA', 'OGGETTO_GARA', 'OGGETTO_LOTTO',
     'TIPO_CIG', 'TIPO_SCELTA_CONTRAENTE', 'MODALITA_REALIZZAZIONE', 'STRUMENTO_SVOLGIMENTO',
@@ -430,6 +449,11 @@ function makeCigDetailPanel(procedure, pipelineRecord, mobile = false) {
     'IMPORTO_LOTTO', 'IMPORTO_SICUREZZA', 'DATA_SCADENZA_OFFERTA', 'ORA_SCADENZA_OFFERTA',
     'DATA_COMUNICAZIONE_ESITO', 'DURATA_PREVISTA', 'N_LOTTI_COMPONENTI', 'SIGLA_PROVINCIA', 'CPV',
   ]);
+  if (options.compact) {
+    delete bando.CIG;
+    if (bando.OGGETTO_GARA === options.nativeObject) delete bando.OGGETTO_GARA;
+    if (bando.OGGETTO_LOTTO === options.nativeObject) delete bando.OGGETTO_LOTTO;
+  }
   const publicationData = selectedFields(smartcig.pubblicazioni, ['DATA_CREAZIONE', 'DATA_PUBBLICAZIONE']);
   const stationData = selectedFields(smartcig.stazione_appaltante, [
     'DENOMINAZIONE_AMMINISTRAZIONE_APPALTANTE', 'CF_AMMINISTRAZIONE_APPALTANTE',
@@ -469,6 +493,7 @@ function makeCigDetailPanel(procedure, pipelineRecord, mobile = false) {
   ];
   for (const [title, value, wide] of definitions) {
     const section = detailSection(title, value, wide);
+    if (section && value === procedureData) section.classList.add('cig-procedure-data');
     if (section) sections.append(section);
   }
   const sources = sourceSection(
@@ -516,6 +541,11 @@ function activateTab(tab, tabs, panels) {
 
 function renderProject(data) {
   results.replaceChildren();
+  if (data.consultation?.available && data.consultation.projects?.length && window.aifelProjectNavigation) {
+    results.hidden = false;
+    window.aifelProjectNavigation.mount(results, data);
+    return;
+  }
   const profile = data.project_profile || {};
   const project = profile.project || {};
   const procedures = data.procedures || [];
@@ -580,10 +610,11 @@ function renderProject(data) {
     if (value !== undefined && value !== null && value !== '') addField(projectGrid, label, value);
   }
   for (const [label, value] of Object.entries(profile)) {
-    if (label === 'project' || label === 'projects' || value === undefined || value === null || value === '') continue;
+    if (['project', 'projects', 'cup', 'regis_row_count', 'soggetti_attuatori'].includes(label) || value === undefined || value === null || value === '') continue;
     addField(projectGrid, label.replaceAll('_', ' '), value);
   }
   overviewPanel.append(projectGrid);
+  window.aifelConsultation?.mount(overviewPanel, data);
   if (profile.projects?.length > 1) {
     overviewPanel.append(el('h3', 'section-title', repositoryMessages.canonicalProjects));
     for (const canonicalProject of profile.projects) {
