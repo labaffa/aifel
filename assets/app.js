@@ -4,14 +4,20 @@ const message = document.querySelector('#message');
 const results = document.querySelector('#results');
 const examples = document.querySelector('#examples');
 const examplesButton = document.querySelector('#show-examples');
-const datasetCount = document.querySelector('#dataset-count');
+const searchHint = document.querySelector('#search-hint');
 let repositoryMessages = {
   publishedAt: 'Data published on',
   notCollected: 'Procurement collection has not been run for this project yet.',
   awaitingReview: 'Collected procedures are awaiting review.',
   reviewedEmpty: 'No procedures were included after review.',
   unknownCup: 'No project or procurement data was found for this CUP.',
-  collectedCups: 'CUP with collected procurement. Search any project CUP.',
+  searchHint: 'Search any CUP in the archive.',
+  investigationCups: 'CUPs with investigations',
+  hideInvestigationCups: 'Hide CUPs with investigations',
+  investigation_procurement: 'Tenders and CIG',
+  investigation_questions: 'Questions',
+  noInvestigationCups: 'No CUPs with investigations are available.',
+  unavailableProjectTitle: 'Project title unavailable',
   canonicalProjects: 'Projects associated with this CUP',
   project: 'Project',
   lotAmount: 'Lot amount',
@@ -25,6 +31,11 @@ const messagesReady = fetch('/assets/messages.it.json')
   })
   .then((translations) => { repositoryMessages = { ...repositoryMessages, ...translations }; })
   .catch(() => {});
+
+messagesReady.then(() => {
+  searchHint.textContent = repositoryMessages.searchHint;
+  updateExamplesLabel();
+});
 
 fetch('/api/publication').then((response) => {
   if (!response.ok) throw new Error('Publication status unavailable.');
@@ -846,27 +857,44 @@ async function searchCup(cup) {
 }
 
 form.addEventListener('submit', (event) => { event.preventDefault(); searchCup(input.value); });
+function updateExamplesLabel() {
+  const label = examples.hidden ? repositoryMessages.investigationCups : repositoryMessages.hideInvestigationCups;
+  const chevron = el('span', '', examples.hidden ? '⌄' : '⌃');
+  chevron.setAttribute('aria-hidden', 'true');
+  examplesButton.replaceChildren(document.createTextNode(label + ' '), chevron);
+  examplesButton.setAttribute('aria-expanded', String(!examples.hidden));
+}
 examplesButton.addEventListener('click', () => {
   examples.hidden = !examples.hidden;
-  examplesButton.innerHTML = examples.hidden ? 'CUP disponibili <span aria-hidden="true">⌄</span>' : 'Nascondi CUP disponibili <span aria-hidden="true">⌃</span>';
+  updateExamplesLabel();
 });
 
 fetch('/api/cups').then((response) => {
   if (!response.ok) throw new Error('Data service is unavailable.');
   return response.json();
-}).then(async ({ cups, data_source }) => {
+}).then(async ({ cups, investigations }) => {
   await messagesReady;
   const availableCups = cups || [];
-  datasetCount.textContent = data_source === 'postgres'
-    ? availableCups.length + ' ' + repositoryMessages.collectedCups
-    : availableCups.length + ' CUP con dati già disponibili';
   examples.replaceChildren();
-  for (const cup of availableCups) {
-    const button = el('button', 'example-chip', cup);
-    button.type = 'button';
-    button.addEventListener('click', () => searchCup(cup));
-    examples.append(button);
+  const groups = investigations || [{kind: 'procurement', projects: availableCups.map((cup) => ({cup}))}];
+  for (const group of groups) {
+    if (!group.projects?.length) continue;
+    const section = el('section', 'investigation-cup-group');
+    section.append(el('h3', 'investigation-cup-category', repositoryMessages['investigation_' + group.kind] || group.kind));
+    const list = el('div', 'investigation-cup-list');
+    for (const project of group.projects) {
+      const button = el('button', 'investigation-cup-card');
+      button.type = 'button';
+      const title = project.titles?.join(' · ') || repositoryMessages.unavailableProjectTitle;
+      button.append(el('span', 'investigation-cup-code', project.cup), el('span', 'investigation-cup-title', title));
+      if (project.municipalities?.length) button.append(el('span', 'investigation-cup-place', project.municipalities.join(' · ')));
+      button.title = [project.cup, title, ...(project.municipalities || [])].join(' · ');
+      button.addEventListener('click', () => searchCup(project.cup));
+      list.append(button);
+    }
+    section.append(list); examples.append(section);
   }
+  if (!examples.childElementCount) examples.append(el('p', 'consultation-note', repositoryMessages.noInvestigationCups));
   const initialCup = new URLSearchParams(location.search).get('cup');
   if (initialCup) searchCup(initialCup);
-}).catch(() => { datasetCount.textContent = 'Archivio locale non raggiungibile'; });
+}).catch(() => { examplesButton.hidden = true; });

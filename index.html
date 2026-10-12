@@ -42,7 +42,7 @@
             <input id="cup-input" name="cup" type="text" maxlength="15" placeholder="Inserisci il codice CUP" autocomplete="off" spellcheck="false" required>
             <button type="submit">Cerca <span aria-hidden="true">→</span></button>
           </form>
-          <div class="search-meta"><span id="dataset-count">Caricamento archivio…</span><button id="show-examples" class="text-button" type="button">CUP disponibili <span aria-hidden="true">⌄</span></button></div>
+          <div class="search-meta"><span id="search-hint"></span><button id="show-examples" class="text-button" type="button" aria-expanded="false" aria-controls="examples"></button></div>
           <div id="examples" class="examples" hidden></div>
         </div>
       </section>

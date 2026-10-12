@@ -42,7 +42,9 @@ def assets(filename: str) -> Any:
 def cups() -> Any:
     if app.config['DATA_BACKEND']=='postgres':
         with data_repository.connect() as connection:
-            return jsonify({'cups':data_repository.available_cups(connection),'data_source':'postgres'})
+            collected = data_repository.available_cups(connection)
+            return jsonify({'cups': collected, 'data_source': 'postgres', 'investigations': [
+                {'kind': 'procurement', 'projects': data_repository.collected_cup_summaries(connection, collected)}]})
     return jsonify({"cups": available_cups(APP_DATA_ROOT.resolve())})
 
 

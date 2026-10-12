@@ -68,6 +68,33 @@ def available_cups(connection: psycopg.Connection) -> list[str]:
         'SELECT cup FROM curato.v_procurement_latest_run ORDER BY cup')]
 
 
+def collected_cup_summaries(connection: psycopg.Connection, cups: list[str]) -> list[dict]:
+    """Describe collected CUPs without retrieving procurement details per CUP."""
+    summaries = {cup: {'cup': cup, 'titles': [], 'municipalities': []} for cup in cups}
+    if not cups:
+        return []
+    current = consultation_repository.available(connection)
+    if current:
+        rows = connection.execute('''SELECT cup,titolo_progetto FROM curato.v_aifel_progetti
+            WHERE cup=ANY(%s) ORDER BY cup,codice_locale_progetto''', (cups,)).fetchall()
+        locations = connection.execute('''SELECT DISTINCT cup,descrizione_comune AS municipality
+            FROM curato.v_aifel_localizzazioni WHERE cup=ANY(%s) AND source='open_data'
+            AND nullif(btrim(descrizione_comune),'') IS NOT NULL ORDER BY cup,municipality''', (cups,)).fetchall()
+    else:
+        rows = connection.execute('''SELECT cup,titolo_progetto,comuni FROM curato.v_progetti_misura
+            WHERE cup=ANY(%s) ORDER BY cup,codice_locale_progetto''', (cups,)).fetchall()
+        locations = [{'cup': row['cup'], 'municipality': row['comuni']} for row in rows if row.get('comuni')]
+    for row in rows:
+        title = value_text(row.get('titolo_progetto'))
+        if title and title not in summaries[row['cup']]['titles']:
+            summaries[row['cup']]['titles'].append(title)
+    for row in locations:
+        municipality = value_text(row['municipality'])
+        if municipality and municipality not in summaries[row['cup']]['municipalities']:
+            summaries[row['cup']]['municipalities'].append(municipality)
+    return public_value(list(summaries.values()))
+
+
 def publication_status(connection: psycopg.Connection) -> dict:
     marker = connection.execute("SELECT to_regclass('curato.aifel_publication') AS marker").fetchone()
     if marker['marker'] is None:

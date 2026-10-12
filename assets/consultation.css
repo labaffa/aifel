@@ -1,4 +1,16 @@
 .consultation-projects { margin-top: 2rem; }
+.examples { display: block; }
+.investigation-cup-group { padding-top: 16px; border-top: 1px solid #d5e1e6; }
+.investigation-cup-group + .investigation-cup-group { margin-top: 18px; }
+.investigation-cup-category { margin: 0 0 12px; color: var(--deep); font-size: 15px; }
+.investigation-cup-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.investigation-cup-card { display: grid; align-content: start; gap: 7px; min-width: 0; padding: 14px; border: 1px solid #d5e1e6; border-radius: 4px; background: #f7fafb; text-align: left; font: inherit; color: var(--deep); cursor: pointer; }
+.investigation-cup-card:hover { border-color: var(--blue); background: #eef5f8; }
+.investigation-cup-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.investigation-cup-code { font: bold 12px ui-monospace, SFMono-Regular, Consolas, monospace; }
+.investigation-cup-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
+.investigation-cup-place { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+@media(max-width:600px) { .investigation-cup-list { grid-template-columns: 1fr; } }
 .consultation-project { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid #d5e1e6; border-radius: .75rem; }
 .consultation-project h4 { margin: 0 0 .5rem; overflow-wrap: anywhere; }
 .consultation-section { border-top: 1px solid #d5e1e6; margin-top: .75rem; }
