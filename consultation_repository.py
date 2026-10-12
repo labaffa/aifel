@@ -70,9 +70,11 @@ def measure_keys(project):
     return [list(pair) for pair in dict.fromkeys(pairs) if pair[1]]
 
 
-def section(connection, cup, clp, name, offset=0, limit=100):
+def section(connection, cup, clp, name, offset=0, limit=100, source=None):
     if name not in PROJECT_SECTIONS and name not in MEASURE_SECTIONS:
         raise ValueError('Unknown consultation section.')
+    if source is not None and (name != 'locations' or source not in ('open_data', 'regis')):
+        raise ValueError('Invalid location source.')
     rows = projects(connection, cup, clp)
     project = rows[0] if rows else None
     if project is None:
@@ -81,6 +83,9 @@ def section(connection, cup, clp, name, offset=0, limit=100):
         table = PROJECT_SECTIONS[name]
         where = sql.SQL('cup=%s AND codice_locale_progetto=%s')
         parameters = [cup, clp]
+        if source is not None:
+            where += sql.SQL(' AND source=%s')
+            parameters.append(source)
     else:
         from psycopg.types.json import Jsonb
         table = MEASURE_SECTIONS[name]
@@ -91,5 +96,10 @@ def section(connection, cup, clp, name, offset=0, limit=100):
         parameters = [Jsonb(key) for key in keys]
     total = connection.execute(sql.SQL('SELECT count(*) AS count FROM curato.{} WHERE {}').format(sql.Identifier(table), where), parameters).fetchone()['count']
     rows = connection.execute(sql.SQL('SELECT * FROM curato.{} WHERE {} ORDER BY source,source_dataset,source_row_id LIMIT %s OFFSET %s').format(sql.Identifier(table), where), [*parameters, limit, offset]).fetchall()
+    if name == 'finance':
+        for row in rows:
+            # Preserve the API shape when restoring a publication without this extension.
+            if row.get('finanziamento_pubblico') is None:
+                row.pop('finanziamento_pubblico', None)
     return {'rows': rows, 'total': total, 'offset': offset, 'limit': limit,
             'level': 'project' if name in PROJECT_SECTIONS else 'measure'}

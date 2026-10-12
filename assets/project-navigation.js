@@ -9,8 +9,6 @@ window.aifelProjectNavigation = (() => {
     return item;
   };
   const tabNames = ['overview', 'subjects', 'financial', 'procurement', 'progress', 'questions', 'measure'];
-  const overviewFields = ['id_misura', 'descrizione_misura', 'id_submisura', 'descrizione_submisura',
-    'amministrazione_titolare'];
   const shortTitle = (project) => {
     const title = project.titolo_progetto || t('incompleteTitle', 'Project profile unavailable');
     return title.length > 65 ? title.slice(0, 62) + '…' : title;
@@ -70,9 +68,10 @@ window.aifelProjectNavigation = (() => {
     if (!host.isConnected) return;
     const projects = data.consultation.projects;
     const cache = new Map();
-    const page = (project, name, offset = 0, limit = 100) => {
+    const page = (project, name, offset = 0, limit = 100, source = null) => {
       const params = new URLSearchParams({clp: project.codice_locale_progetto, section: name,
         offset: String(offset), limit: String(limit)});
+      if (source) params.set('source', source);
       const key = params.toString();
       if (!cache.has(key)) cache.set(key, fetch('/api/cup/' + encodeURIComponent(data.cup) + '/consultation?' + key)
         .then((response) => { if (!response.ok) throw new Error('Consultation request failed.'); return response.json(); })
@@ -108,12 +107,11 @@ window.aifelProjectNavigation = (() => {
       if (result.total > result.rows.length) panel.append(make('p', 'consultation-note', t('moreSubjects', 'Further entities are available in the subjects section.')));
     }
     function locations(panel, project) {
-      panel.append(make('label', '', t('locations', 'Locations')));
       const content = make('div', 'location-summary');
       panel.append(content);
       asyncInto(content, async () => {
-        const first = await page(project, 'locations', 0, 5);
-        if (!first.total) { content.append(make('p', 'consultation-note', t('noData'))); return; }
+        const first = await page(project, 'locations', 0, 5, 'open_data');
+        if (!first.total) { content.append(make('p', 'consultation-note', t('openDataLocationsUnavailable'))); return; }
         let rows = first.rows;
         let expanded = false;
         const stats = make('p', 'consultation-note', first.total + ' ' + t('locationRecords', 'source location records'));
@@ -133,9 +131,14 @@ window.aifelProjectNavigation = (() => {
             item.append(make('p', 'location-place', territory || t('missing')));
             const address = [row.indirizzo, row.descrizione_provincia, row.descrizione_regione].filter(Boolean).join(' · ');
             if (address) item.append(make('p', 'location-address', address));
+            if (row.percentuale_localizzazione != null) {
+              const share = make('p', 'location-share');
+              share.append(make('span', 'location-share-label', t('percentuale_localizzazione') + ': '),
+                make('strong', '', consultation.display('percentuale_localizzazione', row.percentuale_localizzazione)));
+              item.append(share);
+            }
             const source = row.source === 'regis' ? 'ReGiS' : t('openData');
-            item.append(make('span', 'consultation-source', source + ' · ' + dateLabel(row.source_reference_date)
-              + (row.percentuale_localizzazione == null ? '' : ' · ' + consultation.display('percentuale_localizzazione', row.percentuale_localizzazione))));
+            item.append(make('span', 'consultation-source', source + ' · ' + dateLabel(row.source_reference_date)));
             if (row.location_representation === 'project_territory_text') item.append(make('span', 'consultation-note', t('territoryText')));
             list.append(item);
           }
@@ -155,7 +158,7 @@ window.aifelProjectNavigation = (() => {
               if (!complete) asyncInto(expandedContent, async () => {
                 const full = [];
                 for (let offset = 0; offset < first.total; offset += 100) {
-                  full.push(...(await page(project, 'locations', offset)).rows);
+                  full.push(...(await page(project, 'locations', offset, 100, 'open_data')).rows);
                 }
                 rows = full; complete = true; filter.hidden = !expanded;
                 const regions = [...new Set(rows.map((row) => row.descrizione_regione).filter(Boolean))];
@@ -177,10 +180,14 @@ window.aifelProjectNavigation = (() => {
       const source = project.source === 'regis' ? 'ReGiS' : t('openData');
       panel.append(make('p', 'consultation-source', source + ' · ' + dateLabel(project.source_reference_date)));
       if (!project.has_project_profile) panel.append(make('p', 'consultation-note', t('incompleteProfile')));
-      const progressSection = make('section', 'overview-section');
-      progressSection.append(make('h3', 'section-title', t('overviewProgress')));
+      const box = (label, className = '') => {
+        const section = make('section', 'overview-section overview-box ' + className);
+        section.append(make('h3', 'section-title', label));
+        panel.append(section);
+        return section;
+      };
+      const progressSection = box(t('overviewProgress'), 'overview-progress');
       const phases = make('div', 'overview-phases'); progressSection.append(phases);
-      panel.append(progressSection);
       for (const name of ['regis', 'open_data']) {
         const observation = project.phase_observations?.[name];
         const card = make('div', 'overview-metric phase-observation');
@@ -193,10 +200,48 @@ window.aifelProjectNavigation = (() => {
         } else card.append(make('p', 'consultation-note', t(observation ? 'phaseSourceAbsent' : 'phasePublicationUnavailable')));
         phases.append(card);
       }
-      const financeSection = make('section', 'overview-section');
-      financeSection.append(make('h3', 'section-title', t('overviewFinancing')));
+      const programme = box(t('overviewProgramme'));
+      const programmeGrid = make('div', 'overview-programme-grid'); programme.append(programmeGrid);
+      for (const [label, code, description] of [
+        ['overviewMeasure', project.id_misura, project.descrizione_misura],
+        ['overviewSubmeasure', project.id_submisura, project.descrizione_submisura],
+        ['amministrazione_titolare', null, project.amministrazione_titolare],
+      ]) {
+        const field = make('div', 'overview-programme-field');
+        field.append(make('h4', '', t(label)));
+        if (code) field.append(make('span', 'programme-code', code));
+        field.append(make('p', '', description || t('missing')));
+        programmeGrid.append(field);
+      }
+      const territory = box(t('locations'), 'overview-location');
+      locations(territory, project);
+      const implementers = box(t('implementerName'), 'overview-implementers');
+      asyncInto(implementers, async () => {
+        const first = await page(project, 'implementers');
+        const records = [...first.rows];
+        for (let offset = first.rows.length; offset < first.total; offset += 100) {
+          records.push(...(await page(project, 'implementers', offset)).rows);
+        }
+        const entities = new Map();
+        for (const row of records) {
+          const key = JSON.stringify([row.denominazione, row.codice_fiscale_soggetto]);
+          if (!entities.has(key)) entities.set(key, {row, sources: new Set()});
+          entities.get(key).sources.add((row.source === 'regis' ? 'ReGiS' : t('openData'))
+            + ' · ' + dateLabel(row.source_reference_date));
+        }
+        if (!entities.size) { implementers.append(make('p', 'consultation-note', t('noData'))); return; }
+        const list = make('div', 'implementer-cards'); implementers.append(list);
+        for (const {row, sources} of entities.values()) {
+          const entity = make('div', 'implementer-card');
+          const fields = make('div', 'detail-grid');
+          addField(fields, t('denominazione'), row.denominazione || t('missing'));
+          addField(fields, t('codice_fiscale_soggetto'), row.codice_fiscale_soggetto || t('missing'));
+          entity.append(fields, make('p', 'consultation-source', [...sources].join(' / ')));
+          list.append(entity);
+        }
+      });
+      const financeSection = box(t('overviewFinancing'), 'overview-funding');
       const snapshot = make('div', 'overview-snapshot'); financeSection.append(snapshot);
-      panel.append(financeSection);
       const metric = (label, value, note) => {
         const card = make('div', 'overview-metric');
         card.append(make('span', 'metric-label', label), make('strong', '', value));
@@ -209,24 +254,15 @@ window.aifelProjectNavigation = (() => {
         // ReGiS remains primary; do not replace its nulls with another source's values.
         const observation = records.find((row) => row.source === 'regis')
           || records.find((row) => row.source_dataset === 'pagamenti') || records[0];
-        const note = observation ? (observation.source === 'regis' ? 'ReGiS' : t('openData')) + ' · '
-          + t(observation.source_dataset) + ' · ' + dateLabel(observation.source_reference_date) : t('noData');
-        financial.append(metric(t('finanziamento_pnrr'), observation ? consultation.display('finanziamento_pnrr', observation.finanziamento_pnrr) : t('missing'), note),
-          metric(t('pagamento_totale'), observation ? consultation.display('pagamento_totale', observation.pagamento_totale) : t('missing'), note));
-        if (observation?.payment_ratio_status && !['missing', 'comparable'].includes(observation.payment_ratio_status)) {
-          financial.append(make('p', 'consultation-note metric-warning', t(observation.payment_ratio_status)));
+        // Public financing is a separate native observation, absent from current ReGiS extracts.
+        const publicObservation = records.find((row) => row.source_dataset === 'progetti' && row.source === 'open_data');
+        for (const field of ['finanziamento_totale', 'finanziamento_pubblico', 'finanziamento_pnrr']) {
+          const selected = field === 'finanziamento_pubblico' ? publicObservation : observation;
+          const note = selected ? (selected.source === 'regis' ? 'ReGiS' : t('openData')) + ' · '
+            + t(selected.source_dataset) + ' · ' + dateLabel(selected.source_reference_date) : t('noData');
+          financial.append(metric(t(field), selected ? consultation.display(field, selected[field]) : t('missing'), note));
         }
       });
-      const grid = make('div', 'detail-grid project-fields');
-      const implementer = make('div', 'detail-field');
-      implementer.append(make('label', '', t('implementerName', 'Implementing entity')));
-      grid.append(implementer);
-      asyncInto(implementer, () => implementingNames(implementer, project, true));
-      const territory = make('div', 'detail-field location-field');
-      grid.append(territory);
-      locations(territory, project);
-      for (const field of overviewFields) if (project[field]) addField(grid, t(field), project[field]);
-      panel.append(grid);
     }
     function pipelineDetail(panel, procedure, record, prefix, options = {}) {
       const detail = makeCigDetailPanel(procedure, record, true, {compact: true, ...options});
@@ -456,10 +492,24 @@ window.aifelProjectNavigation = (() => {
     const heading = make('div', 'project-heading');
     heading.append(make('h2', '', projects.length === 1 ? projects[0].titolo_progetto || t('incompleteTitle') : t('cupSummaryTitle')));
     const metadata = make('div', 'project-heading-metadata');
-    metadata.append(make('span', 'cup-code', data.cup));
-    const investigation = make('span', 'cup-investigation-tag',
-      t('investigation_' + data.collection_status, data.collection_status || t('missing')));
-    investigation.classList.toggle('is-available', data.collection_status === 'available');
+    const reference = make('div', 'cup-reference');
+    reference.append(make('span', 'cup-code', data.cup));
+    if (/^[A-Z0-9]{15}$/.test(data.cup)) {
+      const link = make('a', 'opencup-link', t('openOnOpenCup') + ' ↗');
+      link.href = 'https://www.opencup.gov.it/portale/progetto/-/cup/' + encodeURIComponent(data.cup);
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.setAttribute('aria-label', t('openOnOpenCup') + ' · ' + data.cup + ' · ' + t('opensNewTab'));
+      reference.append(link);
+    }
+    metadata.append(reference);
+    // Register each connected pipeline here; unavailable pipelines are not advertised.
+    const investigations = [{label: t('tab_procurement'), available: data.collection_status === 'available'}];
+    const availableInvestigations = investigations.filter((item) => item.available);
+    const investigation = make('span', 'cup-investigation-tag');
+    investigation.append(make('span', 'investigation-label', t(availableInvestigations.length ? 'availableInvestigations' : 'noAvailableInvestigations')));
+    for (const item of availableInvestigations) investigation.append(make('span', 'investigation-item', item.label));
+    investigation.classList.toggle('is-available', availableInvestigations.length > 0);
     metadata.append(investigation); heading.append(metadata);
     card.append(heading); host.append(card);
     if (projects.length === 1) { projectWorkspace(card, projects[0], 0); return; }

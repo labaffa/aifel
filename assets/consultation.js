@@ -13,7 +13,7 @@ window.aifelConsultation = (() => {
   const sections = {
     locations: ['descrizione_regione', 'descrizione_provincia', 'descrizione_comune', 'regione', 'provincia', 'comune', 'indirizzo', 'cap', 'percentuale_localizzazione'],
     implementers: ['denominazione', 'codice_fiscale_soggetto', 'descrizione_ruolo_soggetto', 'descrizione_forma_giuridica', 'codice_ateco', 'ha_codice_fiscale_mascherato'],
-    finance: ['finanziamento_totale', 'finanziamento_pnrr', 'finanziamento_pnc', 'finanziamento_foi', 'pagamento_totale', 'pagamento_pnrr', 'percentuale_pagata_totale', 'percentuale_pagata_pnrr'],
+    finance: ['finanziamento_totale', 'finanziamento_pubblico', 'finanziamento_pnrr', 'finanziamento_pnc', 'finanziamento_foi', 'pagamento_totale', 'pagamento_pnrr', 'percentuale_pagata_totale', 'percentuale_pagata_pnrr'],
     reporting: ['numero_rendiconti', 'numero_rendiconti_approvati', 'importo_rendicontato', 'importo_approvato', 'importo_pagato'],
     phases: ['codice_fase', 'descrizione_fase', 'data_inizio_prevista', 'data_inizio_effettiva', 'data_fine_prevista', 'data_fine_effettiva'],
     tenders: ['cig', 'codice_interno_pda', 'cig_accordo_quadro', 'oggetto_gara', 'importo_complessivo_gara', 'importo_aggiudicazione', 'data_aggiudicazione_definitiva'],

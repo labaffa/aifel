@@ -84,6 +84,7 @@ def consultation_section(cup: str) -> Any:
         abort(400, description='Invalid CUP.')
     name = request.args.get('section', '')
     clp = request.args.get('clp', '')
+    source = request.args.get('source')
     try:
         offset = int(request.args.get('offset', '0'))
         limit = int(request.args.get('limit', '100'))
@@ -93,12 +94,14 @@ def consultation_section(cup: str) -> Any:
         abort(400, description='Invalid pagination.')
     if name not in consultation_repository.PROJECT_SECTIONS and name not in consultation_repository.MEASURE_SECTIONS:
         abort(400, description='Unknown consultation section.')
+    if source is not None and (name != 'locations' or source not in ('open_data', 'regis')):
+        abort(400, description='Invalid location source.')
     if app.config['DATA_BACKEND'] != 'postgres':
         abort(404, description='Consultation sections are unavailable in this snapshot.')
     with data_repository.connect() as connection:
         if not consultation_repository.available(connection):
             abort(404, description='Consultation data has not been published.')
-        payload = consultation_repository.section(connection, normalized, clp, name, offset, limit)
+        payload = consultation_repository.section(connection, normalized, clp, name, offset, limit, source)
     if payload is None:
         abort(404, description='Unknown project key.')
     return jsonify(data_repository.public_value(payload))
