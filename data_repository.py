@@ -15,6 +15,7 @@ from psycopg.rows import dict_row
 from date_utils import iso_date, normalize_date_fields
 from amount_utils import enrichment_amounts
 import consultation_repository
+import questions_repository
 
 INVALID_DETAIL_URL = re.compile(r'^https://dati\.anticorruzione\.it/superset/dashboard/dettaglio_cig/',re.I)
 LOCAL_PATH = re.compile(r'^(?:/|\\\\|[A-Za-z]:[\\/]|file://|\.{1,2}/|dati/)',re.I)
@@ -177,7 +178,8 @@ def cup_payload(connection: psycopg.Connection,cup: str, *, include_consultation
                  'fase_iter_corrente':row['descrizione_fase_iter_progetto'],
                  'stato_fase_iter_corrente':row['stato_fase_iter_progetto']} for row in consultation_rows]
     run = connection.execute('SELECT * FROM curato.v_procurement_latest_run WHERE cup=%s',(cup,)).fetchone()
-    if not rows and run is None:
+    question_count = questions_repository.count(connection, cup)
+    if not rows and run is None and not question_count:
         return None
     fallback = {}
     # Preserve collected project context for a CUP absent from the project register.
@@ -225,4 +227,6 @@ def cup_payload(connection: psycopg.Connection,cup: str, *, include_consultation
                             for row in associations if row['procedure_in_app'])}}
     if consultation_rows is not None:
         payload['consultation'] = consultation_repository.summary(connection,cup,consultation_rows)
+    if question_count:
+        payload['questions'] = {'available': True, 'total': question_count, 'level': 'cup'}
     return public_value(payload)

@@ -552,7 +552,7 @@ function activateTab(tab, tabs, panels) {
 
 function renderProject(data) {
   results.replaceChildren();
-  if (data.consultation?.available && data.consultation.projects?.length && window.aifelProjectNavigation) {
+  if (data.consultation?.available && (data.consultation.projects?.length || data.questions?.total) && window.aifelProjectNavigation) {
     results.hidden = false;
     window.aifelProjectNavigation.mount(results, data);
     return;
@@ -849,6 +849,7 @@ async function searchCup(cup) {
     const data = await response.json();
     message.hidden = true;
     renderProject(data);
+    window.dispatchEvent(new Event('aifel:project-opened'));
     history.replaceState(null, '', '/?cup=' + encodeURIComponent(normalized));
     results.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
@@ -888,6 +889,11 @@ fetch('/api/cups').then((response) => {
       const title = project.titles?.join(' · ') || repositoryMessages.unavailableProjectTitle;
       button.append(el('span', 'investigation-cup-code', project.cup), el('span', 'investigation-cup-title', title));
       if (project.municipalities?.length) button.append(el('span', 'investigation-cup-place', project.municipalities.join(' · ')));
+      if (project.question_count) button.append(el('span', 'investigation-cup-place', project.question_count + ' ' + window.aifelConsultation.text('tab_questions')));
+      if (project.next_appointment_at) {
+        const date = project.next_appointment_at.slice(0, 10).split('-').reverse().join('/');
+        button.append(el('span', 'investigation-cup-place', window.aifelConsultation.text('questionsNextAppointment') + ': ' + date + ' · ' + project.next_appointment_at.slice(11, 16)));
+      }
       button.title = [project.cup, title, ...(project.municipalities || [])].join(' · ');
       button.addEventListener('click', () => searchCup(project.cup));
       list.append(button);

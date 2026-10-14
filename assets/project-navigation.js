@@ -67,6 +67,7 @@ window.aifelProjectNavigation = (() => {
     await consultation.ready;
     if (!host.isConnected) return;
     const projects = data.consultation.projects;
+    const questions = window.aifelQuestions.create(data.cup);
     const cache = new Map();
     const page = (project, name, offset = 0, limit = 100, source = null) => {
       const params = new URLSearchParams({clp: project.codice_locale_progetto, section: name,
@@ -480,7 +481,7 @@ window.aifelProjectNavigation = (() => {
         }
         if (name === 'procurement') procurement(body, project, index);
         if (name === 'progress') window.aifelProgress.mount(body, data.cup, project);
-        if (name === 'questions') body.append(make('p', 'empty-state', t('questionsUnavailable')));
+        if (name === 'questions') questions.mount(body);
         if (name === 'measure') {
           body.append(make('p', 'consultation-note', t('measureNotice')));
           disclosure(body, data.cup, project, consultation.context);
@@ -490,7 +491,8 @@ window.aifelProjectNavigation = (() => {
     }
     const card = make('article', 'project-card');
     const heading = make('div', 'project-heading');
-    heading.append(make('h2', '', projects.length === 1 ? projects[0].titolo_progetto || t('incompleteTitle') : t('cupSummaryTitle')));
+    heading.append(make('h2', '', projects.length === 1 ? projects[0].titolo_progetto || t('incompleteTitle')
+      : projects.length ? t('cupSummaryTitle') : t('questionsForCup')));
     const metadata = make('div', 'project-heading-metadata');
     const reference = make('div', 'cup-reference');
     reference.append(make('span', 'cup-code', data.cup));
@@ -504,7 +506,10 @@ window.aifelProjectNavigation = (() => {
     }
     metadata.append(reference);
     // Register each connected pipeline here; unavailable pipelines are not advertised.
-    const investigations = [{label: t('tab_procurement'), available: data.collection_status === 'available'}];
+    const investigations = [
+      {label: t('tab_procurement'), available: data.collection_status === 'available'},
+      {label: t('tab_questions'), available: Boolean(data.questions?.total)},
+    ];
     const availableInvestigations = investigations.filter((item) => item.available);
     const investigation = make('span', 'cup-investigation-tag');
     investigation.append(make('span', 'investigation-label', t(availableInvestigations.length ? 'availableInvestigations' : 'noAvailableInvestigations')));
@@ -512,6 +517,11 @@ window.aifelProjectNavigation = (() => {
     investigation.classList.toggle('is-available', availableInvestigations.length > 0);
     metadata.append(investigation); heading.append(metadata);
     card.append(heading); host.append(card);
+    if (!projects.length) {
+      card.append(make('p', 'consultation-note', t('questionOnlyCup')));
+      tabsInto(card, [{label: t('tab_questions'), render: (panel) => questions.mount(panel)}], 'cup');
+      return;
+    }
     if (projects.length === 1) { projectWorkspace(card, projects[0], 0); return; }
     let navigation;
     const summaryItem = {label: t('cupSummary'), render: (panel) => {

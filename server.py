@@ -14,6 +14,7 @@ import psycopg
 import data_repository
 import consultation_repository
 import procurement_repository
+import questions_repository
 from amount_utils import enrichment_amounts
 
 DEFAULT_SNAPSHOT_DIR = Path(__file__).resolve().parents[2] / "dati" / "analisi" / "cup_procurement_app"
@@ -43,8 +44,12 @@ def cups() -> Any:
     if app.config['DATA_BACKEND']=='postgres':
         with data_repository.connect() as connection:
             collected = data_repository.available_cups(connection)
-            return jsonify({'cups': collected, 'data_source': 'postgres', 'investigations': [
-                {'kind': 'procurement', 'projects': data_repository.collected_cup_summaries(connection, collected)}]})
+            question_projects = questions_repository.directory(connection)
+            investigations = [{'kind': 'procurement', 'projects': data_repository.collected_cup_summaries(connection, collected)}]
+            if question_projects:
+                investigations.append({'kind': 'questions', 'projects': question_projects})
+            return jsonify(data_repository.public_value({'cups': sorted(set(collected) | {row['cup'] for row in question_projects}),
+                            'data_source': 'postgres', 'investigations': investigations}))
     return jsonify({"cups": available_cups(APP_DATA_ROOT.resolve())})
 
 
@@ -64,7 +69,7 @@ def cup_data(cup: str) -> Any:
         with data_repository.connect() as connection:
             payload = data_repository.cup_payload(connection,normalized)
         if payload is None:
-            abort(404,description='No project or collected procurement data exists for this CUP.')
+            abort(404,description='No project, collected procurement or question data exists for this CUP.')
         return jsonify(payload)
     data_root = APP_DATA_ROOT.resolve()
     if normalized not in available_cups(data_root):
@@ -122,6 +127,49 @@ def project_procurement(cup: str) -> Any:
         payload = procurement_repository.payload(connection, normalized, request.args['clp'])
     if payload is None:
         abort(404, description='Unknown project key.')
+    return jsonify(data_repository.public_value(payload))
+
+
+@app.get('/api/cup/<cup>/questions')
+def cup_questions(cup: str) -> Any:
+    normalized = cup.strip().upper()
+    if not CUP_PATTERN.fullmatch(normalized):
+        abort(400, description='Invalid CUP.')
+    if 'clp' in request.args:
+        abort(400, description='Questions have CUP-level scope.')
+    try:
+        offset = int(request.args.get('offset', '0'))
+        limit = int(request.args.get('limit', '25'))
+        if offset < 0 or not 1 <= limit <= 100:
+            raise ValueError()
+    except ValueError:
+        abort(400, description='Invalid question pagination.')
+    if app.config['DATA_BACKEND'] != 'postgres':
+        return jsonify({'available': False, 'level': 'cup', 'cup': normalized,
+                        'rows': [], 'total': 0, 'offset': offset, 'limit': limit})
+    with data_repository.connect() as connection:
+        payload = questions_repository.page(connection, normalized, offset, limit)
+    return jsonify(data_repository.public_value(payload))
+
+
+@app.get('/api/questions')
+def questions_archive() -> Any:
+    period = request.args.get('period', 'future')
+    search = request.args.get('search', '').strip()
+    try:
+        offset = int(request.args.get('offset', '0'))
+        limit = int(request.args.get('limit', '25'))
+        if offset < 0 or not 1 <= limit <= 100 or len(search) > 200:
+            raise ValueError()
+        if period not in ('future', 'today', 'week', 'past', 'all') or 'clp' in request.args:
+            raise ValueError()
+    except ValueError:
+        abort(400, description='Invalid question archive filters.')
+    if app.config['DATA_BACKEND'] != 'postgres':
+        return jsonify({'available': False, 'rows': [], 'total': 0, 'offset': offset,
+                        'limit': limit, 'period': period, 'timezone': 'Europe/Rome'})
+    with data_repository.connect() as connection:
+        payload = questions_repository.archive_page(connection, period, search, offset, limit)
     return jsonify(data_repository.public_value(payload))
 
 
