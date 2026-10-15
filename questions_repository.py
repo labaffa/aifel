@@ -96,7 +96,7 @@ def archive_page(connection, period='future', search='', offset=0, limit=25, now
         raise ValueError('Unknown appointment period.')
     if search:
         conditions.append("concat_ws(' ',source_question_id,requester_entity,requester_first_name,"
-                          "requester_last_name,question_text,cited_cups::text) ILIKE %s ESCAPE '!' ")
+                          "requester_last_name,desk,question_text,cited_cups::text) ILIKE %s ESCAPE '!' ")
         parameters.append('%' + search.replace('!', '!!').replace('%', '!%').replace('_', '!_') + '%')
     where = ' WHERE ' + ' AND '.join(conditions) if conditions else ''
     total = connection.execute('SELECT count(*) AS n FROM curato.v_aifel_quesiti_archivio' + where,

@@ -71,6 +71,8 @@
 .question-card { border: 1px solid #d5e1e6; border-radius: 6px; background: #f7fafb; overflow: hidden; }
 .question-summary { padding: 16px 18px; cursor: pointer; color: var(--deep); overflow-wrap: anywhere; }
 .question-heading { display: inline-flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; width: calc(100% - 22px); vertical-align: top; }
+.question-title { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; max-width: 100%; }
+.question-desk-badge { display: inline-block; max-width: 100%; padding: 4px 8px; border: 1px solid hsl(var(--desk-hue) 45% 72%); border-radius: 12px; background: hsl(var(--desk-hue) 60% 94%); color: hsl(var(--desk-hue) 65% 24%); font-size: 12px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
 .question-date { color: var(--muted); font-size: 13px; }
 .question-entity, .question-status, .question-citations { display: block; margin: 8px 0 0 20px; }
 .question-status { color: var(--muted); font-size: 13px; }

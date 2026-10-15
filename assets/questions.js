@@ -24,11 +24,29 @@ window.aifelQuestions = (() => {
     }
     return value;
   }
+  function deskBadge(value) {
+    const name = String(value || '').trim();
+    if (!name || /^[—–-]+$/.test(name)) return null;
+    const key = name.normalize('NFKC').replace(/\s+/g, ' ').toUpperCase();
+    const code = key.match(/^\((\d+)\)/)?.[1];
+    const hues = {'301': 210, '303': 270, '402': 145, '403': 25,
+      '404': 330, '405': 180, '406': 55, '407': 245};
+    let hash = 0;
+    for (const character of key) hash = (Math.imul(hash, 31) + character.codePointAt(0)) >>> 0;
+    const badge = make('span', 'question-desk-badge', name);
+    badge.style.setProperty('--desk-hue', String(hues[code] ?? hash % 360));
+    badge.title = t('questionDesk') + ': ' + name;
+    return badge;
+  }
   function questionCard(row) {
     const card = make('details', 'question-card');
     const summary = make('summary', 'question-summary');
     const heading = make('span', 'question-heading');
-    heading.append(make('strong', '', t('questionId') + ' ' + row.source_question_id),
+    const title = make('span', 'question-title');
+    title.append(make('strong', '', t('questionId') + ' ' + row.source_question_id));
+    const badge = deskBadge(row.desk);
+    if (badge) title.append(badge);
+    heading.append(title,
       make('span', 'question-date', t('questionAppointment') + ': ' + dateLabel(row.appointment_at)));
     const entity = make('span', 'question-entity', t('questionEntity') + ': ' + (row.requester_entity || t('missing')));
     const status = make('span', 'question-status', t('questionStatus') + ': ' + (stateLabel(row.outcome_status) || stateLabel(row.external_status) || t('missing')));
