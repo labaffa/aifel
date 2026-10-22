@@ -16,10 +16,11 @@ from date_utils import iso_date, normalize_date_fields
 from amount_utils import enrichment_amounts
 import consultation_repository
 import questions_repository
+import referents_repository
 
 INVALID_DETAIL_URL = re.compile(r'^https://dati\.anticorruzione\.it/superset/dashboard/dettaglio_cig/',re.I)
 LOCAL_PATH = re.compile(r'^(?:/|\\\\|[A-Za-z]:[\\/]|file://|\.{1,2}/|dati/)',re.I)
-IDENTIFIER_FIELDS = {'cup','cig','codice_locale_progetto','codice locale progetto','phase_value'}
+IDENTIFIER_FIELDS = {'cup','cig','clp','codice_locale_progetto','codice locale progetto','phase_value'}
 PROJECT_FIELDS = {
     'cup': 'CUP', 'codice_locale_progetto': 'Codice Locale Progetto',
     'titolo_progetto': 'Titolo Progetto', 'sintesi_progetto': 'Sintesi Progetto',
@@ -179,7 +180,8 @@ def cup_payload(connection: psycopg.Connection,cup: str, *, include_consultation
                  'stato_fase_iter_corrente':row['stato_fase_iter_progetto']} for row in consultation_rows]
     run = connection.execute('SELECT * FROM curato.v_procurement_latest_run WHERE cup=%s',(cup,)).fetchone()
     question_count = questions_repository.count(connection, cup)
-    if not rows and run is None and not question_count:
+    referents = referents_repository.summary(connection, cup) if include_consultation else None
+    if not rows and run is None and not question_count and not referents:
         return None
     fallback = {}
     # Preserve collected project context for a CUP absent from the project register.
@@ -229,4 +231,6 @@ def cup_payload(connection: psycopg.Connection,cup: str, *, include_consultation
         payload['consultation'] = consultation_repository.summary(connection,cup,consultation_rows)
     if question_count:
         payload['questions'] = {'available': True, 'total': question_count, 'level': 'cup'}
+    if referents:
+        payload['referents'] = referents
     return public_value(payload)

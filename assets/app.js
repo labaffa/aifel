@@ -16,6 +16,14 @@ let repositoryMessages = {
   hideInvestigationCups: 'Hide CUPs with investigations',
   investigation_procurement: 'Tenders and CIG',
   investigation_questions: 'Questions',
+  investigation_referents: 'Referents and contacts',
+  investigationSearch: 'Search by CUP, title or municipality',
+  investigationMore: 'Show more',
+  investigationNoMatches: 'No matching CUPs.',
+  investigationShown: 'shown of',
+  investigationConsultations: 'Go to consultations',
+  investigationQuestionArchive: 'Open the question archive',
+  investigationQuestionsHint: 'Browse appointments, desks and questions, including those without a CUP.',
   noInvestigationCups: 'No CUPs with investigations are available.',
   unavailableProjectTitle: 'Project title unavailable',
   canonicalProjects: 'Projects associated with this CUP',
@@ -550,11 +558,11 @@ function activateTab(tab, tabs, panels) {
   for (const panel of panels) panel.hidden = panel.id !== tab.getAttribute('aria-controls');
 }
 
-function renderProject(data) {
+function renderProject(data, navigation = {}) {
   results.replaceChildren();
-  if (data.consultation?.available && (data.consultation.projects?.length || data.questions?.total) && window.aifelProjectNavigation) {
+  if (data.consultation?.available && (data.consultation.projects?.length || data.questions?.total || data.referents?.available) && window.aifelProjectNavigation) {
     results.hidden = false;
-    window.aifelProjectNavigation.mount(results, data);
+    window.aifelProjectNavigation.mount(results, data, navigation);
     return;
   }
   const profile = data.project_profile || {};
@@ -831,7 +839,7 @@ function renderProject(data) {
   }
 }
 
-async function searchCup(cup) {
+async function searchCup(cup, navigation = {}) {
   await messagesReady;
   const normalized = cup.trim().toUpperCase();
   input.value = normalized;
@@ -848,9 +856,12 @@ async function searchCup(cup) {
     if (!response.ok) throw new Error('La richiesta non è andata a buon fine. Riprova tra poco.');
     const data = await response.json();
     message.hidden = true;
-    renderProject(data);
+    renderProject(data, navigation);
     window.dispatchEvent(new Event('aifel:project-opened'));
-    history.replaceState(null, '', '/?cup=' + encodeURIComponent(normalized));
+    const locationParams = new URLSearchParams({cup: normalized});
+    if (navigation.section) locationParams.set('section', navigation.section);
+    if (navigation.clp) locationParams.set('clp', navigation.clp);
+    history.replaceState(null, '', '/?' + locationParams);
     results.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
     showMessage(error.message || 'Non è stato possibile leggere i dati.', true);
@@ -870,37 +881,31 @@ examplesButton.addEventListener('click', () => {
   updateExamplesLabel();
 });
 
+async function renderInvestigationDirectory(groups, explorer) {
+  if (!explorer) {
+    const records = new Map();
+    for (const group of groups) for (const item of group.projects || []) {
+      if (!records.has(item.cup)) records.set(item.cup, {cup: item.cup, kinds: [], titles: [], municipalities: [], projects: []});
+      const record = records.get(item.cup);
+      record.kinds.push(group.kind);
+      record.titles.push(...(item.titles || []));
+      record.municipalities.push(...(item.municipalities || []));
+    }
+    explorer = [...records.values()];
+  }
+  await window.aifelInvestigationExplorer.mount(examples, explorer, searchCup);
+}
+
 fetch('/api/cups').then((response) => {
   if (!response.ok) throw new Error('Data service is unavailable.');
   return response.json();
-}).then(async ({ cups, investigations }) => {
+}).then(async ({ cups, investigations, explorer }) => {
   await messagesReady;
   const availableCups = cups || [];
   examples.replaceChildren();
   const groups = investigations || [{kind: 'procurement', projects: availableCups.map((cup) => ({cup}))}];
-  for (const group of groups) {
-    if (!group.projects?.length) continue;
-    const section = el('section', 'investigation-cup-group');
-    section.append(el('h3', 'investigation-cup-category', repositoryMessages['investigation_' + group.kind] || group.kind));
-    const list = el('div', 'investigation-cup-list');
-    for (const project of group.projects) {
-      const button = el('button', 'investigation-cup-card');
-      button.type = 'button';
-      const title = project.titles?.join(' · ') || repositoryMessages.unavailableProjectTitle;
-      button.append(el('span', 'investigation-cup-code', project.cup), el('span', 'investigation-cup-title', title));
-      if (project.municipalities?.length) button.append(el('span', 'investigation-cup-place', project.municipalities.join(' · ')));
-      if (project.question_count) button.append(el('span', 'investigation-cup-place', project.question_count + ' ' + window.aifelConsultation.text('tab_questions')));
-      if (project.next_appointment_at) {
-        const date = project.next_appointment_at.slice(0, 10).split('-').reverse().join('/');
-        button.append(el('span', 'investigation-cup-place', window.aifelConsultation.text('questionsNextAppointment') + ': ' + date + ' · ' + project.next_appointment_at.slice(11, 16)));
-      }
-      button.title = [project.cup, title, ...(project.municipalities || [])].join(' · ');
-      button.addEventListener('click', () => searchCup(project.cup));
-      list.append(button);
-    }
-    section.append(list); examples.append(section);
-  }
+  await renderInvestigationDirectory(groups, explorer);
   if (!examples.childElementCount) examples.append(el('p', 'consultation-note', repositoryMessages.noInvestigationCups));
   const initialCup = new URLSearchParams(location.search).get('cup');
-  if (initialCup) searchCup(initialCup);
+  if (initialCup) searchCup(initialCup, {section: new URLSearchParams(location.search).get('section'), clp: new URLSearchParams(location.search).get('clp')});
 }).catch(() => { examplesButton.hidden = true; });

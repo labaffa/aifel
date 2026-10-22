@@ -70,6 +70,15 @@ contract retains overview, procedure and evidence data, and adds
 review and available reviewed procedures. Every canonical CLP row is retained
 in `project_profile.projects`; procurement linkage remains CUP-level.
 
+The CUP investigation explorer uses one paged table for procurement, questions and
+referents. `/api/cups` adds `explorer` metadata with native CLP programme paths.
+Filters cover mission, component, measure, submeasure and CUP/title/municipality/
+implementer search. Programme filters must match the same CLP. Missing profiles
+remain searchable. Investigation badges open the corresponding project section;
+explicit CLP and section selections are preserved in URL parameters. Deploy
+`investigations_repository.py` and `assets/investigation-explorer.js` with the
+updated app, then restart it. No database publication is required.
+
 With v3, the CUP response adds `consultation.projects` with per-CLP section
 counts. `GET /api/cup/<CUP>/consultation` takes `clp`, `section`, `offset` and
 `limit` query parameters (default 100, maximum 500), and returns rows and total
@@ -82,8 +91,20 @@ Measure context keeps its native level and is displayed separately.
 The interface opens a single CLP directly in seven section tabs. Multiple CLPs
 open a CUP summary and independent workspaces; more than five use a searchable
 selector and summary cards load twenty at a time. Overview locations show five
-records, with a searchable full list on expansion. Contacts and questions show
-their availability explicitly until their pipelines are connected.
+records, with a searchable full list on expansion. Optional research components
+report their availability independently.
+
+The optional referent component adds `GET /api/cup/<CUP>/referents`, accepting
+`clp`, `cig`, `offset` and `limit` (maximum 100 per collection). The Subjects tab
+shows reviewed project roles, separately scoped procedure reports and attributed
+personal/office/entity contacts with expandable evidence. Historical roles remain
+explicit; names do not merge canonical identities. CIG details show only their
+linked procedure reports and contacts. The reader requires SELECT on
+`curato.v_aifel_referenti`, `curato.v_aifel_referenti_recapiti` and
+`curato.v_aifel_approfondimenti_referenti`. Older databases without these optional
+tables remain usable. Updated components also appear in the investigation badge
+and CUP directory. Restart the application after deploying the new repository
+module and frontend assets.
 
 The overview shows separate ReGiS and Open Data phase values, their independent
 dates and exact source field names. The preferred fields are the ReGiS Uff.VII

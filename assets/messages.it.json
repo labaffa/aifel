@@ -1,4 +1,12 @@
 {
+  "investigation_referents": "Referenti e recapiti",
+  "investigationSearch": "Cerca per CUP, titolo o comune",
+  "investigationMore": "Mostra altri",
+  "investigationNoMatches": "Nessun CUP corrispondente alla ricerca.",
+  "investigationShown": "visualizzati su",
+  "investigationConsultations": "Vai alle consulenze",
+  "investigationQuestionArchive": "Apri archivio quesiti",
+  "investigationQuestionsHint": "Consulta appuntamenti, desk e quesiti, anche quelli che non citano un CUP.",
   "publishedAt": "Dati pubblicati il",
   "notCollected": "La raccolta delle procedure non è ancora stata eseguita per questo progetto.",
   "awaitingReview": "Le procedure raccolte sono in attesa di revisione.",

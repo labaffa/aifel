@@ -24,6 +24,26 @@ MEASURE_SECTIONS = {
     'measure_tags': 'v_aifel_tag_misura',
 }
 
+SUBJECT_SECTIONS = {
+    'recipients': '02',
+    'target_entities': '12',
+    'intermediaries': '14',
+    'other_subjects': None,
+}
+SUBJECT_TABLE = 'v_aifel_altri_soggetti'
+
+
+def subjects_available(connection):
+    return connection.execute('SELECT to_regclass(%s) IS NOT NULL AS available',
+                              ('curato.' + SUBJECT_TABLE,)).fetchone()['available']
+
+
+def subject_filter(name):
+    role = SUBJECT_SECTIONS[name]
+    if role:
+        return sql.SQL('ruolo_soggetto={}').format(sql.Literal(role))
+    return sql.SQL("ruolo_soggetto IS NULL OR ruolo_soggetto NOT IN ('02','03','12','14')")
+
 
 def available(connection):
     return connection.execute("SELECT to_regclass('curato.v_aifel_progetti') IS NOT NULL AS available").fetchone()['available']
@@ -53,6 +73,12 @@ def summary(connection, cup, rows):
         query = sql.SQL('SELECT codice_locale_progetto,count(*) AS count FROM curato.{} WHERE cup=%s GROUP BY 1').format(sql.Identifier(table))
         for row in connection.execute(query, (cup,)):
             counts[row['codice_locale_progetto']][section] = row['count']
+    if subjects_available(connection):
+        for section in SUBJECT_SECTIONS:
+            query = sql.SQL('SELECT codice_locale_progetto,count(*) AS count FROM curato.{} WHERE cup=%s AND ({}) GROUP BY 1').format(
+                sql.Identifier(SUBJECT_TABLE), subject_filter(section))
+            for row in connection.execute(query, (cup,)):
+                counts[row['codice_locale_progetto']][section] = row['count']
     return {'available': True, 'projects': [
         {**row, 'sections': counts[row['codice_locale_progetto']]} for row in rows
     ]}
@@ -71,7 +97,7 @@ def measure_keys(project):
 
 
 def section(connection, cup, clp, name, offset=0, limit=100, source=None):
-    if name not in PROJECT_SECTIONS and name not in MEASURE_SECTIONS:
+    if name not in PROJECT_SECTIONS and name not in MEASURE_SECTIONS and name not in SUBJECT_SECTIONS:
         raise ValueError('Unknown consultation section.')
     if source is not None and (name != 'locations' or source not in ('open_data', 'regis')):
         raise ValueError('Invalid location source.')
@@ -79,10 +105,14 @@ def section(connection, cup, clp, name, offset=0, limit=100, source=None):
     project = rows[0] if rows else None
     if project is None:
         return None
-    if name in PROJECT_SECTIONS:
-        table = PROJECT_SECTIONS[name]
+    if name in PROJECT_SECTIONS or name in SUBJECT_SECTIONS:
+        table = SUBJECT_TABLE if name in SUBJECT_SECTIONS else PROJECT_SECTIONS[name]
         where = sql.SQL('cup=%s AND codice_locale_progetto=%s')
         parameters = [cup, clp]
+        if name in SUBJECT_SECTIONS:
+            if not subjects_available(connection):
+                return {'rows': [], 'total': 0, 'offset': offset, 'limit': limit, 'level': 'project'}
+            where += sql.SQL(' AND ({})').format(subject_filter(name))
         if source is not None:
             where += sql.SQL(' AND source=%s')
             parameters.append(source)
@@ -102,4 +132,4 @@ def section(connection, cup, clp, name, offset=0, limit=100, source=None):
             if row.get('finanziamento_pubblico') is None:
                 row.pop('finanziamento_pubblico', None)
     return {'rows': rows, 'total': total, 'offset': offset, 'limit': limit,
-            'level': 'project' if name in PROJECT_SECTIONS else 'measure'}
+            'level': 'project' if name in PROJECT_SECTIONS or name in SUBJECT_SECTIONS else 'measure'}

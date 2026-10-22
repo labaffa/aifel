@@ -8,7 +8,8 @@ FIELDS = ('cup', 'source_question_id', 'appointment_at', 'requester_entity',
           'citation_fields', 'source')
 DETAIL_FIELDS = ('requester_first_name', 'requester_last_name', 'requester_email',
                  'requester_mobile', 'requester_phone', 'service', 'desk', 'booked_at',
-                 'closed_definitively', 'source_extracted_at', 'source_imported_at', 'cited_measures')
+                 'closed_definitively', 'source_extracted_at', 'source_imported_at', 'cited_measures',
+                 'source_downloaded_at')
 ARCHIVE_FIELDS = tuple(field for field in FIELDS if field not in ('cup', 'citation_fields')) + DETAIL_FIELDS + ('cited_cups',)
 
 
@@ -102,7 +103,10 @@ def archive_page(connection, period='future', search='', offset=0, limit=25, now
     total = connection.execute('SELECT count(*) AS n FROM curato.v_aifel_quesiti_archivio' + where,
                                parameters).fetchone()['n']
     order = 'ASC' if period in ('future', 'week', 'today') else 'DESC'
-    rows = connection.execute('SELECT ' + ','.join(ARCHIVE_FIELDS) +
+    columns = {row['attname'] for row in connection.execute('''SELECT attname FROM pg_attribute
+        WHERE attrelid='curato.v_aifel_quesiti_archivio'::regclass AND attnum>0 AND NOT attisdropped''')}
+    selected = [name if name in columns else 'NULL AS ' + name for name in ARCHIVE_FIELDS]
+    rows = connection.execute('SELECT ' + ','.join(selected) +
         ' FROM curato.v_aifel_quesiti_archivio' + where +
         ' ORDER BY appointment_at ' + order + ' NULLS LAST,source_question_id LIMIT %s OFFSET %s',
         [*parameters, limit, offset]).fetchall()

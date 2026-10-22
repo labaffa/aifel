@@ -24,6 +24,15 @@ window.aifelQuestions = (() => {
     }
     return value;
   }
+  function checkedAtLabel(value) {
+    if (!value) return t('missing');
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return t('missing');
+    return new Intl.DateTimeFormat('it-IT', {
+      timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    }).format(date);
+  }
   function deskBadge(value) {
     const name = String(value || '').trim();
     if (!name || /^[—–-]+$/.test(name)) return null;
@@ -116,8 +125,7 @@ window.aifelQuestions = (() => {
     }
     fieldsSection('questionProvenance', [
       ['questionDataSource', 'CEPOSTO'],
-      ['questionExtracted', dateLabel(row.source_extracted_at)],
-      ['questionImported', dateLabel(row.source_imported_at)]
+      ['questionChecked', checkedAtLabel(row.source_downloaded_at)]
     ]);
     body.append(make('p', 'consultation-source', t('questionSource')));
     card.append(summary, body);

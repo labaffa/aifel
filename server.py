@@ -15,6 +15,8 @@ import data_repository
 import consultation_repository
 import procurement_repository
 import questions_repository
+import referents_repository
+import investigations_repository
 from amount_utils import enrichment_amounts
 
 DEFAULT_SNAPSHOT_DIR = Path(__file__).resolve().parents[2] / "dati" / "analisi" / "cup_procurement_app"
@@ -45,11 +47,16 @@ def cups() -> Any:
         with data_repository.connect() as connection:
             collected = data_repository.available_cups(connection)
             question_projects = questions_repository.directory(connection)
+            referent_projects = data_repository.collected_cup_summaries(connection,
+                [row['cup'] for row in referents_repository.directory(connection)])
             investigations = [{'kind': 'procurement', 'projects': data_repository.collected_cup_summaries(connection, collected)}]
             if question_projects:
                 investigations.append({'kind': 'questions', 'projects': question_projects})
-            return jsonify(data_repository.public_value({'cups': sorted(set(collected) | {row['cup'] for row in question_projects}),
-                            'data_source': 'postgres', 'investigations': investigations}))
+            if referent_projects:
+                investigations.append({'kind': 'referents', 'projects': referent_projects})
+            explorer = investigations_repository.directory(connection, investigations)
+            return jsonify(data_repository.public_value({'cups': sorted(set(collected) | {row['cup'] for row in question_projects} | {row['cup'] for row in referent_projects}),
+                            'data_source': 'postgres', 'investigations': investigations, 'explorer': explorer}))
     return jsonify({"cups": available_cups(APP_DATA_ROOT.resolve())})
 
 
@@ -99,7 +106,9 @@ def consultation_section(cup: str) -> Any:
             raise ValueError()
     except ValueError:
         abort(400, description='Invalid pagination.')
-    if name not in consultation_repository.PROJECT_SECTIONS and name not in consultation_repository.MEASURE_SECTIONS:
+    if (name not in consultation_repository.PROJECT_SECTIONS
+            and name not in consultation_repository.MEASURE_SECTIONS
+            and name not in consultation_repository.SUBJECT_SECTIONS):
         abort(400, description='Unknown consultation section.')
     if source is not None and (name != 'locations' or source not in ('open_data', 'regis')):
         abort(400, description='Invalid location source.')
@@ -170,6 +179,33 @@ def questions_archive() -> Any:
                         'limit': limit, 'period': period, 'timezone': 'Europe/Rome'})
     with data_repository.connect() as connection:
         payload = questions_repository.archive_page(connection, period, search, offset, limit)
+    return jsonify(data_repository.public_value(payload))
+
+
+@app.get('/api/cup/<cup>/referents')
+def cup_referents(cup: str) -> Any:
+    normalized = cup.strip().upper()
+    if not CUP_PATTERN.fullmatch(normalized):
+        abort(400, description='Invalid CUP.')
+    clp = request.args.get('clp')
+    cig = request.args.get('cig')
+    if cig is not None and not re.fullmatch(r'[A-Z0-9]{10}', cig):
+        abort(400, description='Invalid CIG.')
+    try:
+        offset = int(request.args.get('offset', '0'))
+        limit = int(request.args.get('limit', '100'))
+        if offset < 0 or not 1 <= limit <= 100:
+            raise ValueError()
+    except ValueError:
+        abort(400, description='Invalid referent pagination.')
+    if app.config['DATA_BACKEND'] != 'postgres':
+        return jsonify({'available': False, 'roles': [], 'contacts': [], 'investigations': [],
+                        'cup': normalized, 'clp': clp, 'offset': offset, 'limit': limit,
+                        'role_total': 0, 'contact_total': 0})
+    with data_repository.connect() as connection:
+        if clp is not None and not consultation_repository.projects(connection, normalized, clp):
+            abort(404, description='Unknown project key.')
+        payload = referents_repository.page(connection, normalized, clp, offset, limit, cig)
     return jsonify(data_repository.public_value(payload))
 
 

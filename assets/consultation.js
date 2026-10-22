@@ -30,6 +30,9 @@ window.aifelConsultation = (() => {
     measure_tags: ['campo_intervento_clima', 'coefficiente_tag_clima', 'campo_intervento_digitale', 'coefficiente_tag_digitale', 'importo_contribuzione_clima', 'importo_contribuzione_digitale'],
   };
   const context = ['measure_finance', 'activation', 'milestones', 'common_mapping', 'target_mapping', 'monitoring', 'measure_progress', 'measure_tags'];
+  for (const name of ['recipients', 'target_entities', 'intermediaries', 'other_subjects']) {
+    sections[name] = sections.implementers;
+  }
   const quantityFields = new Set(['valore_programmato', 'valore_realizzato', 'valore_indicatore',
     'riferimento_partenza_target', 'valore_obiettivo_target', 'obiettivo',
     'coefficiente_tag_clima', 'coefficiente_tag_digitale']);
@@ -93,7 +96,10 @@ window.aifelConsultation = (() => {
   function section(cup, project, name, isContext = false, options = {}) {
     const details = node('details', 'consultation-section');
     const count = project.sections[name] || 0;
-    const heading = node('summary', '', text(name, name) + (!isContext ? ' (' + count + ')' : ''));
+    const isSubject = ['implementers', 'recipients', 'target_entities', 'intermediaries', 'other_subjects'].includes(name);
+    const suffix = isSubject ? ' · ' + count + ' ' + text(count === 1 ? 'declaration' : 'declarations')
+      : !isContext ? ' (' + count + ')' : '';
+    const heading = node('summary', '', text(name, name) + suffix);
     const body = node('div', 'consultation-body');
     details.append(heading, body);
     let loaded = false;

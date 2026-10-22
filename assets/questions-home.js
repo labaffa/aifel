@@ -81,5 +81,5 @@
   search.addEventListener('input', () => {
     controller?.abort(); generation += 1; clearTimeout(timer); timer = setTimeout(reset, 250);
   });
-  mode(false);
+  mode(new URLSearchParams(location.search).get('consultations') === 'all');
 })();

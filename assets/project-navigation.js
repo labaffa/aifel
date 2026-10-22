@@ -63,11 +63,12 @@ window.aifelProjectNavigation = (() => {
       if (openFirst && index === 0) item.open = true;
     });
   }
-  async function mount(host, data) {
+  async function mount(host, data, navigationOptions = {}) {
     await consultation.ready;
     if (!host.isConnected) return;
     const projects = data.consultation.projects;
     const questions = window.aifelQuestions.create(data.cup);
+    const referents = window.aifelReferents.create(data.cup);
     const cache = new Map();
     const page = (project, name, offset = 0, limit = 100, source = null) => {
       const params = new URLSearchParams({clp: project.codice_locale_progetto, section: name,
@@ -327,6 +328,13 @@ window.aifelProjectNavigation = (() => {
             }
             const native = group(t('tenderData'), true);
             native.append(consultation.renderRow(row, 'tenders', {hideSource: true, omitFields: ['cig', 'oggetto_gara']}));
+            if (row.cig && data.referents?.available) {
+              const people = group(t('referentProcedureTitle'));
+              let mounted = false;
+              people.addEventListener('toggle', () => {
+                if (people.open && !mounted) { mounted = true; referents.mountProcedure(people, project, row.cig); }
+              });
+            }
             for (const kind of ['awardees', 'subcontractors']) {
               const operators = group(operatorLabel(kind, row[kind]));
               if (!row[kind].length) operators.append(make('p', 'consultation-note', t('noData')));
@@ -458,7 +466,10 @@ window.aifelProjectNavigation = (() => {
             const card = make('details', 'tender-card');
             card.append(make('summary', '', item.procedure.cig + ' · ' + (item.procedure.tender_object || t('missing'))));
             card.addEventListener('toggle', () => {
-              if (card.open && !card.querySelector('.cig-detail-panel')) pipelineDetail(card, item.procedure, item.record, 'clp-' + index + '-cup-' + ordinal);
+              if (card.open && !card.querySelector('.cig-detail-panel')) {
+                pipelineDetail(card, item.procedure, item.record, 'clp-' + index + '-cup-' + ordinal);
+                if (data.referents?.available) referents.mountProcedure(card, project, item.procedure.cig);
+              }
             });
             group.append(card);
           });
@@ -472,8 +483,17 @@ window.aifelProjectNavigation = (() => {
       const items = tabNames.map((name) => ({label: t('tab_' + name), render: (body) => {
         if (name === 'overview') overview(body, project);
         if (name === 'subjects') {
-          body.append(make('p', 'consultation-note', t('contactsUnavailable')));
-          disclosure(body, data.cup, project, ['implementers', 'awardees', 'subcontractors'], true);
+          const layout = make('div', 'subject-contact-layout');
+          const subjectsBox = make('section', 'subject-contact-box project-subjects-box');
+          subjectsBox.append(make('h3', 'section-title', t('projectSubjectsTitle')),
+            make('p', 'consultation-note', t('subjectDeclarationsNotice')));
+          const subjectSections = ['implementers', 'recipients', 'target_entities', 'intermediaries'];
+          if (project.sections.other_subjects > 0) subjectSections.push('other_subjects');
+          subjectSections.push('awardees', 'subcontractors');
+          disclosure(subjectsBox, data.cup, project, subjectSections);
+          const contactsBox = make('section', 'subject-contact-box project-contacts-box');
+          layout.append(subjectsBox, contactsBox); body.append(layout);
+          referents.mount(contactsBox, project);
         }
         if (name === 'financial') {
           body.append(make('p', 'consultation-note', t('financialNotice')));
@@ -487,7 +507,7 @@ window.aifelProjectNavigation = (() => {
           disclosure(body, data.cup, project, consultation.context);
         }
       }}));
-      tabsInto(panel, items, 'clp-' + index);
+      tabsInto(panel, items, 'clp-' + index, Math.max(0, tabNames.indexOf(navigationOptions.section)));
     }
     const card = make('article', 'project-card');
     const heading = make('div', 'project-heading');
@@ -509,6 +529,7 @@ window.aifelProjectNavigation = (() => {
     const investigations = [
       {label: t('tab_procurement'), available: data.collection_status === 'available'},
       {label: t('tab_questions'), available: Boolean(data.questions?.total)},
+      {label: t('referentTitle'), available: Boolean(data.referents?.available)},
     ];
     const availableInvestigations = investigations.filter((item) => item.available);
     const investigation = make('span', 'cup-investigation-tag');
@@ -518,8 +539,11 @@ window.aifelProjectNavigation = (() => {
     metadata.append(investigation); heading.append(metadata);
     card.append(heading); host.append(card);
     if (!projects.length) {
-      card.append(make('p', 'consultation-note', t('questionOnlyCup')));
-      tabsInto(card, [{label: t('tab_questions'), render: (panel) => questions.mount(panel)}], 'cup');
+      card.append(make('p', 'consultation-note', t('referentProfileMissing')));
+      const items = [];
+      if (data.referents?.available) items.push({label: t('tab_subjects'), render: (panel) => referents.mount(panel)});
+      if (data.questions?.total) items.push({label: t('tab_questions'), render: (panel) => questions.mount(panel)});
+      tabsInto(card, items, 'cup', Math.max(0, items.findIndex((item) => item.label === t('tab_' + navigationOptions.section))));
       return;
     }
     if (projects.length === 1) { projectWorkspace(card, projects[0], 0); return; }
@@ -559,8 +583,9 @@ window.aifelProjectNavigation = (() => {
       label: shortTitle(project).slice(0, 32) + ' · CLP ' + project.codice_locale_progetto,
       render: (panel) => projectWorkspace(panel, project, index),
     }))];
+    const initialProject = navigationOptions.clp ? Math.max(0, projects.findIndex((project) => project.codice_locale_progetto === navigationOptions.clp) + 1) : 0;
     if (projects.length <= 5) {
-      navigation = tabsInto(card, items, 'cup');
+      navigation = tabsInto(card, items, 'cup', initialProject);
       card.querySelector('.result-tabs').setAttribute('aria-label', t('clpNavigation'));
       card.querySelector('.result-tabs').classList.add('clp-tabs');
       projects.forEach((project, index) => { card.querySelector('#cup-tab-' + (index + 1)).title = shortTitle(project); });
@@ -590,7 +615,7 @@ window.aifelProjectNavigation = (() => {
       }
       filter.addEventListener('input', populate);
       select.addEventListener('change', () => navigation.select(Number(select.value)));
-      chooser.append(filter, select); card.append(chooser, ...panels); navigation.select(0);
+      chooser.append(filter, select); card.append(chooser, ...panels); navigation.select(initialProject);
     }
   }
   return { mount };
