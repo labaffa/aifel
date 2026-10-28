@@ -79,20 +79,20 @@ def archive_page(connection, period='future', search='', offset=0, limit=25, now
     if not available(connection, 'v_aifel_quesiti_archivio'):
         return payload
     now = now or local_now()
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     conditions, parameters = [], []
     if period in ('future', 'week'):
         conditions.append('appointment_at >= %s')
-        parameters.append(now)
+        parameters.append(start)
         if period == 'week':
             conditions.append('appointment_at < %s')
-            parameters.append(now + timedelta(days=7))
+            parameters.append(start + timedelta(days=7))
     elif period == 'today':
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         conditions.append('appointment_at >= %s AND appointment_at < %s')
         parameters.extend((start, start + timedelta(days=1)))
     elif period == 'past':
         conditions.append('appointment_at < %s')
-        parameters.append(now)
+        parameters.append(start)
     elif period != 'all':
         raise ValueError('Unknown appointment period.')
     if search:

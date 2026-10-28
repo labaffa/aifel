@@ -15,6 +15,7 @@ import data_repository
 import consultation_repository
 import procurement_repository
 import questions_repository
+import demand_repository
 import referents_repository
 import investigations_repository
 from amount_utils import enrichment_amounts
@@ -158,6 +159,27 @@ def cup_questions(cup: str) -> Any:
                         'rows': [], 'total': 0, 'offset': offset, 'limit': limit})
     with data_repository.connect() as connection:
         payload = questions_repository.page(connection, normalized, offset, limit)
+    return jsonify(data_repository.public_value(payload))
+
+
+@app.get('/api/questions/demand')
+def question_demand() -> Any:
+    period = request.args.get('period', 'fortnight')
+    desk, category = request.args.get('desk'), request.args.get('category')
+    search = request.args.get('search', '').strip()
+    try:
+        offset, limit = int(request.args.get('offset', '0')), int(request.args.get('limit', '25'))
+        if period not in ('fortnight', 'future', 'today', 'week', 'past', 'all') or offset < 0 or not 1 <= limit <= 100 or len(search) > 200:
+            raise ValueError()
+        if (desk is not None and len(desk) > 200) or (category is not None and len(category) > 100) or 'clp' in request.args:
+            raise ValueError()
+        if app.config['DATA_BACKEND'] != 'postgres':
+            return jsonify({'available': False})
+        with data_repository.connect() as connection:
+            payload = demand_repository.summary(connection, period, desk, category, offset, limit,
+                                                search=search, include_rows=True)
+    except ValueError:
+        abort(400, description='Invalid demand filters.')
     return jsonify(data_repository.public_value(payload))
 
 

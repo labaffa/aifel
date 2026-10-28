@@ -246,3 +246,18 @@
 .referent-procedures { margin-top: 12px; }
 .referent-procedures > summary { cursor: pointer; color: var(--blue-text); font-size: 13px; }
 .referent-procedure { padding: 12px 0; border-bottom: 1px solid #dbe6ed; }
+/* Broad question demand and its drill-down remain usable on narrow screens. */
+.demand-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.demand-group { display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; color: inherit; cursor: pointer; font: inherit; }
+.demand-group[aria-pressed="true"] { border-color: #2563eb; background: #eff6ff; }
+.demand-count { font-size: 1.7rem; font-variant-numeric: tabular-nums; }
+.demand-drill { margin-top: 24px; }
+.demand-question { min-width: 0; }
+.demand-summary { margin-bottom: 8px; }
+.demand-evidence { margin-bottom: 12px; overflow-wrap: anywhere; }
+.demand-evidence blockquote { margin: 10px 0; padding-left: 12px; border-left: 3px solid #cbd5e1; }
+.question-shared-filters { grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.3fr) minmax(220px, 1.7fr); }
+.question-demand { margin: 24px 0 30px; padding-bottom: 24px; border-bottom: 1px solid #d5e1e6; }
+.question-list-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.question-list-heading h3 { margin: 0; }
+@media(max-width:800px) { .question-shared-filters { grid-template-columns: minmax(0, 1fr); } }
