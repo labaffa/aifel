@@ -64,17 +64,81 @@ window.aifelQuestions = (() => {
       if ((row.citation_fields || []).includes(field)) citations.append(make('span', 'question-citation',
         t(field === 'question_text' ? 'cupCitedInQuestion' : 'cupCitedInMinutes')));
     }
-    summary.append(heading, entity, status, citations);
+    summary.append(heading, entity, status);
+    const measures = row.question_measures || [];
+    const hasMeasureContext = Array.isArray(row.question_measures);
+    function measureOrigin(item) {
+      const origins = item.origins || [];
+      if (origins.includes('cited_cup')) return t('questionMeasureFromCup');
+      return t(origins.includes('text_explicit') ? 'questionMeasureFromText' : 'questionMeasureInferred');
+    }
+    const citedCups = [...new Set(row.cited_cups || [row.cup, ...(row.other_cups || [])].filter(Boolean))];
+    function referenceGroups(expanded = false) {
+      const footer = make('span', 'question-reference-groups' + (expanded ? ' question-reference-expanded' : ''));
+      footer.setAttribute('aria-label', t('questionReferences'));
+      const linked = make('span', 'question-reference-linked');
+      const usedCups = new Set();
+      const additional = [];
+      function measureHeading(item) {
+        const heading = make('span', 'question-measure-heading');
+        heading.append(make('strong', 'question-measure-code', item.code));
+        if (item.label && item.label !== item.code) heading.append(make('span', 'question-measure-name', item.label));
+        heading.title = item.code + ' · ' + item.label + ' — ' + measureOrigin(item);
+        if (!(item.origins || []).includes('cited_cup') && !(item.origins || []).includes('text_explicit')) {
+          heading.append(make('span', 'question-measure-inferred', t('questionMeasureInferred')));
+        }
+        return heading;
+      }
+      function cupLinks(cups) {
+        const links = make('span', 'question-reference-cups');
+        links.append(make('span', 'question-reference-label', t('questionCupLabel')));
+        for (const cup of cups) {
+          const link = make('a', 'question-citation', cup); link.href = '/?cup=' + encodeURIComponent(cup);
+          link.addEventListener('click', event => event.stopPropagation()); links.append(link);
+        }
+        return links;
+      }
+      for (const item of measures) {
+        // Only the published project association can pair a measure with a cited CUP.
+        const cups = [...new Set((item.cups || []).filter(cup => citedCups.includes(cup)))];
+        if (!cups.length) { additional.push(item); continue; }
+        cups.forEach(cup => usedCups.add(cup));
+        const group = make('span', 'question-reference-group'); group.dataset.measure = item.code;
+        group.append(measureHeading(item), cupLinks(cups));
+        if (expanded) group.append(make('span', 'question-reference-origin', measureOrigin(item)));
+        linked.append(group);
+      }
+      const unpaired = citedCups.filter(cup => !usedCups.has(cup));
+      if (unpaired.length) {
+        const group = make('span', 'question-reference-group question-reference-unpaired');
+        group.append(make('span', 'question-reference-label', t(hasMeasureContext ? 'questionCupMeasureUnavailable' : 'questionCitedCups')),
+          cupLinks(unpaired));
+        linked.append(group);
+      }
+      if (linked.childElementCount) footer.append(linked);
+      if (additional.length) {
+        const group = make('span', 'question-reference-additional');
+        group.append(make('span', 'question-reference-label', t('questionAdditionalMeasures')));
+        const list = make('span', 'question-additional-measures');
+        for (const item of additional) {
+          const measure = make('span', 'question-additional-measure'); measure.dataset.measure = item.code;
+          measure.append(measureHeading(item));
+          if (expanded) measure.append(make('span', 'question-reference-origin', measureOrigin(item)));
+          list.append(measure);
+        }
+        group.append(list); footer.append(group);
+      }
+      if (!citedCups.length) footer.append(make('span', 'question-reference-origin', t('questionNoCups')));
+      return footer;
+    }
     if (row.cited_cups) {
       const name = [row.requester_first_name, row.requester_last_name].filter(Boolean).join(' ');
       if (name) summary.append(make('span', 'question-entity', t('questionRequester') + ': ' + name));
       summary.append(make('span', 'question-entity question-preview', (row.question_text || '').slice(0, 160)));
-      if (!row.cited_cups.length) citations.append(make('span', 'question-citation', t('questionNoCups')));
-      for (const cup of row.cited_cups) {
-        const link = make('a', 'question-citation', cup); link.href = '/?cup=' + encodeURIComponent(cup);
-        link.addEventListener('click', (event) => event.stopPropagation()); citations.append(link);
-      }
     }
+    const referenceFooter = referenceGroups();
+    if (citations.childElementCount) referenceFooter.append(citations);
+    summary.append(referenceFooter);
     const body = make('div', 'question-body');
     function fieldsSection(title, fields) {
       const section = make('section', 'question-section');
@@ -101,23 +165,11 @@ window.aifelQuestions = (() => {
     ]);
     const references = fieldsSection('questionReferences', [
       ...(row.cup ? [['questionCurrentCup', row.cup]] : []),
-      ['questionMeasures', (row.cited_measures || []).join(' · ') || t('questionNoMeasures')]
+      ...(!hasMeasureContext ? [['questionMeasures', (row.cited_measures || []).join(' · ') || t('questionNoMeasures')]] : [])
     ]);
-    const linkedCups = row.cited_cups || row.other_cups || [];
-    if (linkedCups.length) {
-      const section = make('section', 'question-text-section');
-      section.append(make('h4', '', t(row.cited_cups ? 'questionCitedCups' : 'questionOtherCups')));
-      const links = make('div', 'question-cup-links');
-      for (const cup of linkedCups) {
-        const link = make('a', 'question-citation', cup);
-        link.href = '/?cup=' + encodeURIComponent(cup);
-        links.append(link);
-      }
-      section.append(links);
-      references.append(section);
-    } else if (row.cited_cups) {
-      references.append(make('p', 'consultation-note', t('questionNoCups')));
-    }
+    references.append(referenceGroups(true));
+    if (measures.length) references.append(make('p', 'consultation-note', t('questionMeasureScope')));
+    else if (hasMeasureContext) references.append(make('p', 'consultation-note', t('questionUnassignedMeasure')));
     for (const [key, value] of [['questionText', row.question_text], ['consultationMinutes', row.consultation_minutes]]) {
       const section = make('section', 'question-section question-text-section');
       section.append(make('h4', '', t(key)), make('p', 'question-text', value || t('missing')));

@@ -166,6 +166,7 @@ def cup_questions(cup: str) -> Any:
 def question_demand() -> Any:
     period = request.args.get('period', 'fortnight')
     desk, category = request.args.get('desk'), request.args.get('category')
+    measures = request.args.getlist('measure')
     search = request.args.get('search', '').strip()
     try:
         offset, limit = int(request.args.get('offset', '0')), int(request.args.get('limit', '25'))
@@ -173,11 +174,15 @@ def question_demand() -> Any:
             raise ValueError()
         if (desk is not None and len(desk) > 200) or (category is not None and len(category) > 100) or 'clp' in request.args:
             raise ValueError()
+        if len(measures) > 200 or any(len(measure) > 64 or
+                (measure != 'unassigned' and not re.fullmatch(r'M\d+C\d+[IR]\d+(?:\.\d+)*', measure))
+                for measure in measures):
+            raise ValueError()
         if app.config['DATA_BACKEND'] != 'postgres':
             return jsonify({'available': False})
         with data_repository.connect() as connection:
             payload = demand_repository.summary(connection, period, desk, category, offset, limit,
-                                                search=search, include_rows=True)
+                                                search=search, include_rows=True, measure=measures)
     except ValueError:
         abort(400, description='Invalid demand filters.')
     return jsonify(data_repository.public_value(payload))

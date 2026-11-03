@@ -256,7 +256,44 @@
 .demand-summary { margin-bottom: 8px; }
 .demand-evidence { margin-bottom: 12px; overflow-wrap: anywhere; }
 .demand-evidence blockquote { margin: 10px 0; padding-left: 12px; border-left: 3px solid #cbd5e1; }
-.question-shared-filters { grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.3fr) minmax(220px, 1.7fr); }
+.question-shared-filters { grid-template-columns: minmax(130px, .8fr) minmax(160px, 1fr) minmax(180px, 1.4fr) minmax(180px, 1.2fr); }
+.question-shared-filters > div { min-width: 0; }
+.question-shared-filters select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.question-filter-label { display: block; margin-bottom: 6px; font-size: 13px; }
+.question-measure-filter { position: relative; min-width: 0; }
+.question-measure-filter > summary { box-sizing: border-box; min-height: 45px; padding: 12px; border: 1px solid #ccd8de; border-radius: 4px; background: white; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.question-measure-filter > summary::after { content: '▾'; margin-left: auto; }
+.question-measure-filter > summary span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.question-measure-filter > summary::-webkit-details-marker { display: none; }
+.question-measure-filter > summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.question-measure-panel { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #b8cdd9; border-radius: 6px; background: white; box-shadow: 0 8px 24px #15294626; }
+@media(min-width:1100px) { .question-measure-panel { width: 520px; } }
+.question-measure-panel > .consultation-note { margin: 0 0 8px; font-size: 12px; }
+.question-measure-options { min-width: 0; max-height: 300px; overflow-y: auto; margin: 8px 0 0; padding: 0; border: 0; }
+.question-measure-search-label { display: block; margin-top: 10px; font-size: 12px; }
+.question-measure-panel input[type='search'] { margin: 4px 0 8px; padding: 8px; }
+.question-measure-option[hidden] { display: none !important; }
+.question-measure-legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.question-measure-option { display: flex !important; align-items: flex-start; gap: 8px; padding: 8px 4px; cursor: pointer; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.question-measure-option input[type='checkbox'] { flex: 0 0 auto; width: 16px; height: 16px; margin: 2px 0 0; padding: 0; accent-color: #2563eb; }
+.question-measure-option:focus-within { background: #edf5f5; }
+.question-reference-groups { display: block; margin: 14px 0 0 20px; padding-top: 12px; border-top: 1px solid #e0e8ec; font-size: 12px; }
+.question-reference-linked { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px 24px; }
+.question-reference-group, .question-additional-measure { display: block; min-width: 0; }
+.question-measure-heading { display: flex; align-items: baseline; gap: 8px; min-width: 0; line-height: 1.5; }
+.question-measure-code { flex-shrink: 0; font-size: 12px; color: var(--deep); }
+.question-measure-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.question-reference-cups { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.question-reference-cups .question-citation { padding: 2px 6px; }
+.question-reference-label { display: block; color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1.5; }
+.question-reference-origin { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.question-reference-additional { display: block; margin-top: 12px; }
+.question-additional-measures { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 6px 24px; margin-top: 4px; }
+.question-measure-inferred { flex-shrink: 0; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #795318; background: #fff8eb; }
+.question-reference-expanded { margin-left: 0; border-top: 0; padding-top: 0; }
+.question-reference-expanded .question-measure-name { white-space: normal; overflow-wrap: anywhere; }
+.question-reference-expanded .question-reference-additional { margin-top: 18px; }
+.question-reference-groups > .question-citations { margin-left: 0; }
 .question-demand { margin: 24px 0 30px; padding-bottom: 24px; border-bottom: 1px solid #d5e1e6; }
 .question-list-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .question-list-heading h3 { margin: 0; }

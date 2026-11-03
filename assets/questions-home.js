@@ -27,6 +27,90 @@
     ['past', t('questionsPeriod_past')], ['all', t('questionsArchive')]]);
   if (new URLSearchParams(location.search).get('consultations') === 'all') period.value = 'all';
   const desk = selectField('questions-desk', t('demandDesk'), [['*', t('demandAllDesks')]]);
+  const measureField = make('div');
+  const measureCaption = make('span', 'question-filter-label', t('questionMeasureFilter'));
+  measureCaption.id = 'questions-measure-label';
+  const measure = make('details', 'question-measure-filter'); measure.id = 'questions-measure';
+  const measureSummary = make('summary', '', t('questionAllMeasures'));
+  measureSummary.setAttribute('aria-labelledby', measureCaption.id + ' questions-measure-value');
+  const measureValue = make('span', '', t('questionAllMeasures')); measureValue.id = 'questions-measure-value';
+  measureSummary.replaceChildren(measureValue);
+  const measurePanel = make('div', 'question-measure-panel');
+  const measureHint = make('p', 'consultation-note', t('questionMeasureMultipleHint'));
+  const measureSearchLabel = make('label', 'question-measure-search-label', t('questionMeasureSearch'));
+  measureSearchLabel.htmlFor = 'questions-measure-search';
+  const measureSearch = make('input'); measureSearch.id = 'questions-measure-search';
+  measureSearch.type = 'search'; measureSearch.maxLength = 200; measureSearch.autocomplete = 'off';
+  measureSearch.placeholder = t('questionMeasureSearchHint');
+  const clearMeasures = make('button', 'text-button', t('questionAllMeasures')); clearMeasures.type = 'button';
+  const measureOptions = make('fieldset', 'question-measure-options');
+  const noMatchingMeasures = make('p', 'consultation-note', t('questionNoMatchingMeasures'));
+  noMatchingMeasures.hidden = true; noMatchingMeasures.setAttribute('role', 'status');
+  const selectedMeasures = new Set();
+  const measureLabels = new Map();
+  measurePanel.append(measureHint, measureSearchLabel, measureSearch, clearMeasures, measureOptions, noMatchingMeasures);
+  measure.append(measureSummary, measurePanel);
+  measureField.append(measureCaption, measure); filters.append(measureField);
+  const normalizeMeasureSearch = value => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('it').replace(/\s+/g, '');
+  function filterMeasureOptions(resetScroll = false) {
+    const query = normalizeMeasureSearch(measureSearch.value);
+    let visible = 0;
+    for (const option of measureOptions.querySelectorAll('.question-measure-option')) {
+      option.hidden = !!query && !option.dataset.searchText.includes(query);
+      if (!option.hidden) visible += 1;
+    }
+    noMatchingMeasures.hidden = visible > 0;
+    if (resetScroll) measureOptions.scrollTop = 0;
+  }
+  measureSearch.addEventListener('input', () => filterMeasureOptions(true));
+  function updateMeasureSummary() {
+    const selected = [...selectedMeasures];
+    measureValue.textContent = !selected.length ? t('questionAllMeasures') : selected.length === 1 ?
+      measureLabels.get(selected[0]) || selected[0] : selected.length + ' ' + t('questionMeasuresSelected');
+    measureSummary.title = selected.map(code => measureLabels.get(code) || code).join('\n');
+    clearMeasures.disabled = !selected.length;
+  }
+  function renderMeasures(result) {
+    measureField.hidden = !result.measures_available;
+    if (!result.measures_available) return;
+    const focusedCode = measureOptions.contains(document.activeElement) ? document.activeElement.value : null;
+    const scrollTop = measureOptions.scrollTop;
+    const options = new Map((result.measures || []).map(item => [item.code, {...item,
+      display: item.code + (item.label && item.label !== item.code ? ' · ' + item.label : '')}]));
+    if (result.unassigned_measure_questions || selectedMeasures.has('unassigned')) {
+      options.set('unassigned', {code: 'unassigned', display: t('questionUnassignedMeasure'),
+        question_count: result.unassigned_measure_questions || 0});
+    }
+    for (const code of selectedMeasures) {
+      if (!options.has(code)) options.set(code, {code, display: measureLabels.get(code) || code, question_count: 0});
+    }
+    const legend = make('legend', 'question-measure-legend', t('questionMeasureFilter'));
+    measureOptions.replaceChildren(legend);
+    for (const item of options.values()) {
+      const display = item.display;
+      measureLabels.set(item.code, display);
+      const option = make('label', 'question-measure-option');
+      option.dataset.searchText = normalizeMeasureSearch(item.code + ' ' + display);
+      const checkbox = make('input'); checkbox.type = 'checkbox'; checkbox.value = item.code;
+      checkbox.name = 'measure'; checkbox.checked = selectedMeasures.has(item.code);
+      option.append(checkbox, make('span', '', display + ' (' + item.question_count + ')'));
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) selectedMeasures.add(item.code); else selectedMeasures.delete(item.code);
+        updateMeasureSummary(); reset();
+      });
+      measureOptions.append(option);
+      if (focusedCode === item.code) checkbox.focus({preventScroll: true});
+    }
+    measureOptions.scrollTop = scrollTop;
+    filterMeasureOptions();
+    updateMeasureSummary();
+  }
+  clearMeasures.addEventListener('click', () => { selectedMeasures.clear(); updateMeasureSummary(); reset(); });
+  document.addEventListener('click', event => { if (!measure.contains(event.target)) measure.open = false; });
+  measure.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { measure.open = false; measureSummary.focus(); }
+  });
   const searchField = make('div');
   const searchLabel = make('label', '', t('questionsSearch')); searchLabel.htmlFor = 'questions-search';
   const search = make('input'); search.id = 'questions-search'; search.type = 'search'; search.maxLength = 200;
@@ -84,20 +168,30 @@
   }
   function questionRow(row) {
     const wrapper = make('div', 'demand-question');
+    const card = window.aifelQuestions.questionCard(row);
+    const body = card.querySelector('.question-body');
+    const analysis = make('section', 'question-section');
+    let hasAnalysis = false;
     for (const item of (row.demand_classification?.assignments || []).filter(item => item.category_code === category)) {
-      wrapper.append(make('p', 'demand-summary', item.request_summary));
-      const evidence = make('details', 'demand-evidence');
-      evidence.append(make('summary', '', t('demandEvidence')));
-      for (const quote of item.evidence_quotes) evidence.append(make('blockquote', '', quote));
-      wrapper.append(evidence);
+      if (!hasAnalysis) analysis.append(make('h4', '', t('demandDetectedRequest')));
+      hasAnalysis = true;
+      analysis.append(make('p', 'demand-summary', item.request_summary));
+      if (item.evidence_quotes?.length) {
+        const evidence = make('details', 'demand-evidence');
+        evidence.append(make('summary', '', t('demandEvidence')));
+        for (const quote of item.evidence_quotes) evidence.append(make('blockquote', '', quote));
+        analysis.append(evidence);
+      } else {
+        analysis.append(make('p', 'consultation-note', t('demandEvidenceUnavailable')));
+      }
     }
     if (category && row.demand_classification?.needs_review) {
-      wrapper.append(make('p', 'consultation-note', t('demandNeedsReview')));
+      analysis.append(make('p', 'consultation-note', t('demandNeedsReview')));
+      hasAnalysis = true;
     }
-    const card = window.aifelQuestions.questionCard(row);
+    if (hasAnalysis) body?.prepend(analysis);
     const classifiedAt = row.demand_classification?.classified_at;
     if (classifiedAt) {
-      const body = card.querySelector('.question-body');
       const date = new Intl.DateTimeFormat('it-IT', {
         dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Rome'}).format(new Date(classifiedAt));
       body?.append(make('p', 'consultation-note', t('demandClassifiedAt') + ' ' + date));
@@ -111,6 +205,7 @@
     try {
       const query = new URLSearchParams({period: period.value, search: search.value.trim(), offset: String(offset), limit: '25'});
       if (desk.value !== '*') query.set('desk', desk.value);
+      for (const code of selectedMeasures) query.append('measure', code);
       if (category) query.set('category', category);
       const response = await fetch('/api/questions/demand?' + query, {signal: controller.signal});
       if (!response.ok) throw new Error('Question workspace request failed');
@@ -126,6 +221,7 @@
         const option = make('option', '', value || t('demandUnknownDesk')); option.value = value; desk.append(option);
       }
       desk.value = selectedDesk;
+      renderMeasures(result);
       renderGroups(result);
       const categoryLabel = category === 'unclassified' ? t('demandUnclassified') :
         result.categories.find(item => item.code === category)?.label;
