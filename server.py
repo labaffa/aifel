@@ -169,12 +169,21 @@ def question_demand() -> Any:
     period = request.args.get('period', 'fortnight')
     desk, category = request.args.get('desk'), request.args.get('category')
     measures = request.args.getlist('measure')
+    administration = request.args.get('administration')
+    external_status = request.args.get('external_status')
+    closed = request.args.get('closed')
     search = request.args.get('search', '').strip()
     try:
         offset, limit = int(request.args.get('offset', '0')), int(request.args.get('limit', '25'))
         if period not in ('fortnight', 'future', 'today', 'week', 'past', 'all') or offset < 0 or not 1 <= limit <= 100 or len(search) > 200:
             raise ValueError()
         if (desk is not None and len(desk) > 200) or (category is not None and len(category) > 100) or 'clp' in request.args:
+            raise ValueError()
+        if any(value is not None and len(value) > 500 for value in (administration, external_status)):
+            raise ValueError()
+        if closed is not None and closed not in ('true', 'false', 'unknown'):
+            raise ValueError()
+        if any(len(request.args.getlist(key)) > 1 for key in ('administration', 'external_status', 'closed')):
             raise ValueError()
         if len(measures) > 200 or any(len(measure) > 64 or
                 (measure != 'unassigned' and not re.fullmatch(r'M\d+C\d+[IR]\d+(?:\.\d+)*', measure))
@@ -184,7 +193,8 @@ def question_demand() -> Any:
             return jsonify({'available': False})
         with data_repository.connect() as connection:
             payload = demand_repository.summary(connection, period, desk, category, offset, limit,
-                                                search=search, include_rows=True, measure=measures)
+                                                search=search, include_rows=True, measure=measures,
+                                                administration=administration, external_status=external_status, closed=closed)
             answers_repository.attach_summaries(connection, payload['rows'])
     except ValueError:
         abort(400, description='Invalid demand filters.')

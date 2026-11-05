@@ -6,13 +6,13 @@ import questions_repository
 
 
 def summary(connection, period='fortnight', desk=None, category=None, offset=0, limit=25, now=None,
-            search='', include_rows=False, measure=None):
+            search='', include_rows=False, measure=None, administration=None, external_status=None, closed=None):
     selected_measures = list(dict.fromkeys([measure] if isinstance(measure, str) else (measure or [])))
     result = {'available': False, 'total_questions': 0, 'classified_questions': 0,
               'unclassified_questions': 0, 'categories': [], 'desks': [], 'run': None,
               'rows': [], 'total': 0, 'offset': offset, 'limit': limit,
               'period': period, 'timezone': 'Europe/Rome', 'measures': [], 'measures_available': False,
-              'selected_measures': selected_measures}
+              'selected_measures': selected_measures, 'administrations': [], 'external_statuses': []}
     if not questions_repository.available(connection, 'v_aifel_quesiti_archivio'):
         return result
     columns = {row['attname'] for row in connection.execute('''SELECT attname FROM pg_attribute
@@ -44,8 +44,6 @@ def summary(connection, period='fortnight', desk=None, category=None, offset=0, 
         parameters.append(start)
     elif period != 'all':
         raise ValueError('Unknown demand period')
-    if period not in ('past', 'all'):
-        conditions.append("upper(regexp_replace(btrim(coalesce(external_status,'')), '\\s+', ' ', 'g')) <> 'PRENOTAZIONE ANNULLATA'")
     where = ' WHERE ' + ' AND '.join(conditions) if conditions else ''
     result['desks'] = [row['desk'] for row in connection.execute('''SELECT DISTINCT coalesce(desk,'') AS desk
         FROM curato.v_aifel_quesiti_archivio''' + where + ' ORDER BY desk NULLS LAST', parameters)]
@@ -60,8 +58,36 @@ def summary(connection, period='fortnight', desk=None, category=None, offset=0, 
             fields += ',question_measures::text'
         conditions.append("concat_ws(' '," + fields + ") ILIKE %s ESCAPE '!' ")
         parameters.append('%' + search.replace('!', '!!').replace('%', '!%').replace('_', '!_') + '%')
-    where = ' WHERE ' + ' AND '.join(conditions) if conditions else ''
-    # Facet counts ignore their own selection and the category drill-down.
+    filters = {}
+    if external_status is not None:
+        filters['external_status'] = ("coalesce(external_status,'')=%s", [external_status])
+    elif period not in ('past', 'all'):
+        filters['external_status'] = (
+            "upper(regexp_replace(btrim(coalesce(external_status,'')), '\\s+', ' ', 'g')) <> 'PRENOTAZIONE ANNULLATA'", [])
+    if closed is not None:
+        if closed not in ('true', 'false', 'unknown'):
+            raise ValueError('Unknown closure filter')
+        filters['closed'] = ('closed_definitively IS ' + {'true':'TRUE', 'false':'FALSE', 'unknown':'NULL'}[closed], [])
+    if administration is not None:
+        if not has_measures:
+            filters['administration'] = ('false', [])
+        elif administration == '':
+            filters['administration'] = ("NOT EXISTS (SELECT 1 FROM jsonb_array_elements(question_measures) m, "
+                "LATERAL jsonb_array_elements_text(m->'administrations') a WHERE nullif(btrim(a),'') IS NOT NULL)", [])
+        else:
+            filters['administration'] = ("EXISTS (SELECT 1 FROM jsonb_array_elements(question_measures) m "
+                "WHERE m->'administrations' ? %s)", [administration])
+    base_conditions, base_parameters = list(conditions), list(parameters)
+    def scope(exclude=()):
+        terms, values = list(base_conditions), list(base_parameters)
+        for key, (term, arguments) in filters.items():
+            if key not in exclude:
+                terms.append(term)
+                values.extend(arguments)
+        return (' WHERE ' + ' AND '.join(terms) if terms else ''), values
+
+    where, parameters = scope()
+    # Measure facets ignore their own selection and the category drill-down.
     if has_measures:
         result['measures'] = list(connection.execute('''SELECT m->>'code' AS code,
             max(m->>'label') AS label,count(DISTINCT source_question_id) AS question_count
@@ -70,21 +96,33 @@ def summary(connection, period='fortnight', desk=None, category=None, offset=0, 
             " GROUP BY m->>'code' ORDER BY m->>'code'", parameters))
         result['unassigned_measure_questions'] = connection.execute('''SELECT count(*) AS n
             FROM curato.v_aifel_quesiti_archivio''' + where +
-            (' AND ' if conditions else ' WHERE ') +
+            (' AND ' if where else ' WHERE ') +
             "coalesce(question_measures,'[]'::jsonb)='[]'::jsonb", parameters).fetchone()['n']
     if selected_measures:
         if not has_measures:
-            conditions.append('false')
+            filters['measure'] = ('false', [])
         else:
-            alternatives = []
+            alternatives, arguments = [], []
             codes = [value for value in selected_measures if value != 'unassigned']
             if codes:
                 alternatives.append("EXISTS (SELECT 1 FROM jsonb_array_elements(question_measures) m WHERE m->>'code'=ANY(%s))")
-                parameters.append(codes)
+                arguments.append(codes)
             if 'unassigned' in selected_measures:
                 alternatives.append("coalesce(question_measures,'[]'::jsonb)='[]'::jsonb")
-            conditions.append('(' + ' OR '.join(alternatives) + ')')
-    where = ' WHERE ' + ' AND '.join(conditions) if conditions else ''
+            filters['measure'] = ('(' + ' OR '.join(alternatives) + ')', arguments)
+    where, parameters = scope()
+    if has_measures:
+        admin_where, admin_parameters = scope(('administration',))
+        result['administrations'] = list(connection.execute('''SELECT a AS name,
+            count(DISTINCT source_question_id) AS question_count FROM curato.v_aifel_quesiti_archivio
+            CROSS JOIN LATERAL jsonb_array_elements(question_measures) m
+            CROSS JOIN LATERAL jsonb_array_elements_text(m->'administrations') a''' + admin_where +
+            (' AND ' if admin_where else ' WHERE ') + "nullif(btrim(a),'') IS NOT NULL GROUP BY a ORDER BY a", admin_parameters))
+    status_where, status_parameters = scope(('external_status',))
+    result['external_statuses'] = [row['status'] for row in connection.execute(
+        "SELECT DISTINCT coalesce(external_status,'') AS status FROM curato.v_aifel_quesiti_archivio" +
+        status_where + ' ORDER BY status', status_parameters)]
+    conditions = base_conditions + [term for term, _ in filters.values()]
     classification = 'demand_classification' if has_demand else 'NULL::jsonb'
     counts = connection.execute('''SELECT count(*) AS total_questions,
         count(''' + classification + ''') AS classified_questions FROM curato.v_aifel_quesiti_archivio''' +

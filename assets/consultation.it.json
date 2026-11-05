@@ -1,4 +1,10 @@
 {
+  "questionAdministrationFilter": "Amministrazione titolare",
+  "questionAllAdministrations": "Tutte le amministrazioni",
+  "questionUnknownAdministration": "Amministrazione non disponibile",
+  "questionAllExternalStatuses": "Tutti gli stati esterni",
+  "questionUnknownExternalStatus": "Stato esterno non disponibile",
+  "questionAnyClosure": "Tutti",
   "demandDetectedRequest": "Richiesta rilevata",
   "demandEvidenceUnavailable": "Passaggio a supporto non disponibile",
   "questionsWorkspace": "Consulenze e quesiti",

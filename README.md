@@ -174,6 +174,14 @@ snapshot deployments must set `AIFEL_DATA_BACKEND=snapshots` when updating.
 
 ## Verification
 
+The question workspace supports holder administration, native external status
+and definitive closure filters alongside period, desk, measures and search.
+Administration names come from the published measure context's `administrations`
+arrays; the source pipeline must publish this extension to populate the choices.
+The demand API accepts `administration`, `external_status` and
+`closed=true|false|unknown`. A blank administration/status selects missing data.
+Explicit cancellation status filters override the default upcoming exclusion.
+
 From the IFEL workspace root:
 
 ```bash

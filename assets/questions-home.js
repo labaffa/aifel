@@ -27,6 +27,23 @@
     ['past', t('questionsPeriod_past')], ['all', t('questionsArchive')]]);
   if (new URLSearchParams(location.search).get('consultations') === 'all') period.value = 'all';
   const desk = selectField('questions-desk', t('demandDesk'), [['*', t('demandAllDesks')]]);
+  const administration = selectField('questions-administration', t('questionAdministrationFilter'),
+    [['*', t('questionAllAdministrations')]]);
+  const externalStatus = selectField('questions-external-status', t('questionExternalStatus'),
+    [['*', t('questionAllExternalStatuses')]]);
+  const closed = selectField('questions-closed', t('questionClosed'), [
+    ['*', t('questionAnyClosure')], ['true', t('questionYes')], ['false', t('questionNo')],
+    ['unknown', t('missing')]]);
+  function renderSelect(select, items, allLabel, missingLabel) {
+    const selected = select.value;
+    const options = new Map(items.map(item => [item.value, item.label]));
+    if (selected !== '*' && !options.has(selected)) options.set(selected, selected || missingLabel);
+    select.replaceChildren();
+    for (const [value, label] of [['*', allLabel], ...options]) {
+      const option = make('option', '', label); option.value = value; select.append(option);
+    }
+    select.value = selected;
+  }
   const measureField = make('div');
   const measureCaption = make('span', 'question-filter-label', t('questionMeasureFilter'));
   measureCaption.id = 'questions-measure-label';
@@ -205,6 +222,9 @@
     try {
       const query = new URLSearchParams({period: period.value, search: search.value.trim(), offset: String(offset), limit: '25'});
       if (desk.value !== '*') query.set('desk', desk.value);
+      if (administration.value !== '*') query.set('administration', administration.value);
+      if (externalStatus.value !== '*') query.set('external_status', externalStatus.value);
+      if (closed.value !== '*') query.set('closed', closed.value);
       for (const code of selectedMeasures) query.append('measure', code);
       if (category) query.set('category', category);
       const response = await fetch('/api/questions/demand?' + query, {signal: controller.signal});
@@ -221,6 +241,15 @@
         const option = make('option', '', value || t('demandUnknownDesk')); option.value = value; desk.append(option);
       }
       desk.value = selectedDesk;
+      administration.parentElement.hidden = !result.measures_available;
+      renderSelect(administration, [
+        ...(result.administrations || []).map(item => ({value: item.name,
+          label: item.name + ' (' + item.question_count + ')'})),
+        {value: '', label: t('questionUnknownAdministration')}],
+      t('questionAllAdministrations'), t('questionUnknownAdministration'));
+      renderSelect(externalStatus, (result.external_statuses || []).map(value => ({value,
+        label: value || t('questionUnknownExternalStatus')})),
+      t('questionAllExternalStatuses'), t('questionUnknownExternalStatus'));
       renderMeasures(result);
       renderGroups(result);
       const categoryLabel = category === 'unclassified' ? t('demandUnclassified') :
@@ -254,7 +283,7 @@
     load(generation);
   }
   clearCategory.addEventListener('click', () => reset());
-  for (const field of [period, desk]) field.addEventListener('change', () => reset());
+  for (const field of [period, desk, administration, externalStatus, closed]) field.addEventListener('change', () => reset());
   search.addEventListener('input', () => {
     controller?.abort(); generation += 1; clearTimeout(timer);
     // Do not leave results from the previous query visible during debounce.

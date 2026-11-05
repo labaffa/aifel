@@ -286,7 +286,7 @@
 .demand-summary { margin-bottom: 8px; }
 .demand-evidence { margin-bottom: 12px; overflow-wrap: anywhere; }
 .demand-evidence blockquote { margin: 10px 0; padding-left: 12px; border-left: 3px solid #cbd5e1; }
-.question-shared-filters { grid-template-columns: minmax(130px, .8fr) minmax(160px, 1fr) minmax(180px, 1.4fr) minmax(180px, 1.2fr); }
+.question-shared-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .question-shared-filters > div { min-width: 0; }
 .question-shared-filters select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 .question-filter-label { display: block; margin-bottom: 6px; font-size: 13px; }
