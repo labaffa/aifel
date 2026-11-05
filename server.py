@@ -15,6 +15,7 @@ import data_repository
 import consultation_repository
 import procurement_repository
 import questions_repository
+import answers_repository
 import demand_repository
 import referents_repository
 import investigations_repository
@@ -159,6 +160,7 @@ def cup_questions(cup: str) -> Any:
                         'rows': [], 'total': 0, 'offset': offset, 'limit': limit})
     with data_repository.connect() as connection:
         payload = questions_repository.page(connection, normalized, offset, limit)
+        answers_repository.attach_summaries(connection, payload['rows'])
     return jsonify(data_repository.public_value(payload))
 
 
@@ -183,6 +185,7 @@ def question_demand() -> Any:
         with data_repository.connect() as connection:
             payload = demand_repository.summary(connection, period, desk, category, offset, limit,
                                                 search=search, include_rows=True, measure=measures)
+            answers_repository.attach_summaries(connection, payload['rows'])
     except ValueError:
         abort(400, description='Invalid demand filters.')
     return jsonify(data_repository.public_value(payload))
@@ -206,6 +209,20 @@ def questions_archive() -> Any:
                         'limit': limit, 'period': period, 'timezone': 'Europe/Rome'})
     with data_repository.connect() as connection:
         payload = questions_repository.archive_page(connection, period, search, offset, limit)
+        answers_repository.attach_summaries(connection, payload['rows'])
+    return jsonify(data_repository.public_value(payload))
+
+
+@app.get('/api/questions/<identity>/answer')
+def question_answer(identity: str) -> Any:
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',identity) or request.args:
+        abort(400,description='Invalid question answer request.')
+    if app.config['DATA_BACKEND'] != 'postgres':
+        return jsonify({'available':False,'source_question_id':identity,'status':'unavailable','answer':None})
+    with data_repository.connect() as connection:
+        payload = answers_repository.detail(connection,identity)
+    if payload is None:
+        abort(404,description='Unknown question.')
     return jsonify(data_repository.public_value(payload))
 
 

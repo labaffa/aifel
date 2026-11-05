@@ -49,6 +49,7 @@ window.aifelQuestions = (() => {
   }
   function questionCard(row) {
     const card = make('details', 'question-card');
+    card.dataset.questionId = row.source_question_id;
     const summary = make('summary', 'question-summary');
     const heading = make('span', 'question-heading');
     const title = make('span', 'question-title');
@@ -174,6 +175,7 @@ window.aifelQuestions = (() => {
       const section = make('section', 'question-section question-text-section');
       section.append(make('h4', '', t(key)), make('p', 'question-text', value || t('missing')));
       body.append(section);
+      if (key === 'questionText') window.aifelQuestionAnswer?.mount(row, title, body);
     }
     fieldsSection('questionProvenance', [
       ['questionDataSource', 'CEPOSTO'],

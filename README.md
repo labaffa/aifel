@@ -1,5 +1,15 @@
 # aifel
 
+The shared question card includes a read-only AI answer panel in
+`assets/question-answer.js`. Question lists supply `answer_summary`; opening a
+panel calls `/api/questions/<id>/answer` through `answers_repository.py`. Both
+read the optional `answer_snapshot` column in the published question archive.
+Deploy the backend module, routes and frontend assets together, and publish the
+updated question component before enabling answers. Older publications remain
+usable. All drafts retain pending expert review; the app does not generate or
+approve them. The earlier standalone preview remains available through
+`tools/aifel/preview_question_answers.py --serve` in the IFEL workspace.
+
 Web app for browsing IFEL projects and CUP procurement data. The default backend
 reads curated views in the IFEL PostgreSQL database. This repository contains
 the application only; database migrations and ETL live in the IFEL workspace.
