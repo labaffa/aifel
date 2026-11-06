@@ -88,12 +88,13 @@ window.aifelQuestionAnswer = (() => {
     const badge = make('span', 'question-answer-badge' + (state.status === 'available' ? '' : ' question-answer-badge-muted'),
       t(state.status === 'available' ? 'questionAnswerBadge' : stateLabel(state.status)));
     heading.append(badge);
-    if (state.status !== 'available') {
+    const historical = state.status === 'outdated' && state.previous_available;
+    if (state.status !== 'available' && !historical) {
       if (state.status === 'outdated') body.append(make('p', 'question-answer-notice', t('questionAnswerOutdatedNotice')));
       return;
     }
     const panel = make('details', 'question-answer-panel');
-    const summary = make('summary', 'question-answer-summary', t('questionAnswerTitle'));
+    const summary = make('summary', 'question-answer-summary', t(historical ? 'questionAnswerPreviousTitle' : 'questionAnswerTitle'));
     const content = make('div', 'question-answer-content');
     panel.append(summary, content); body.append(panel);
     let loading = false;
@@ -101,7 +102,7 @@ window.aifelQuestionAnswer = (() => {
       if (loading) return;
       loading = true;
       content.replaceChildren(make('p', 'consultation-note', t('loading')));
-      const key = String(row.source_question_id) + ':' + String(state.version);
+      const key = String(row.source_question_id) + ':' + state.status + ':' + String(state.version);
       if (!requests.has(key)) {
         const request = fetch('/api/questions/' + encodeURIComponent(row.source_question_id) + '/answer')
           .then(response => { if (!response.ok) throw new Error('Answer request failed'); return response.json(); })
@@ -112,21 +113,45 @@ window.aifelQuestionAnswer = (() => {
         const result = await requests.get(key);
         if (!panel.isConnected) return;
         if (String(result.source_question_id) !== String(row.source_question_id)) throw new Error('Question mismatch');
-        if (result.status !== 'available') {
+        const previous = historical && result.status === 'outdated' && result.previous_answer;
+        if (result.status !== 'available' && !previous) {
           badge.textContent = t(stateLabel(result.status));
           badge.classList.add('question-answer-badge-muted');
           content.replaceChildren(make('p', 'consultation-note',
             t(result.status === 'outdated' ? 'questionAnswerOutdatedNotice' : stateLabel(result.status))));
           return;
         }
-        if (String(result.answer?.question_id) !== String(row.source_question_id)) throw new Error('Answer mismatch');
+        const answer = previous ? result.previous_answer : result.answer;
+        if (String(answer?.question_id) !== String(row.source_question_id)) throw new Error('Answer mismatch');
         const newHeading = make('div'), newBody = make('div');
-        mount({...row, answer:result.answer}, newHeading, newBody);
+        mount({...row, answer}, newHeading, newBody);
         const replacement = newBody.querySelector('.question-answer-panel');
         if (!replacement) throw new Error('Invalid answer presentation');
         replacement.open = panel.open;
         const hadFocus = panel.contains(document.activeElement);
-        badge.replaceWith(newHeading.firstElementChild); panel.replaceWith(replacement);
+        if (previous) {
+          replacement.querySelector('summary > span').textContent = t('questionAnswerPreviousTitle');
+          const notice = make('div', 'question-answer-notice');
+          notice.append(make('p', '', t('questionAnswerPreviousNotice')));
+          if (typeof result.previous_question_text === 'string' && result.previous_question_text === row.question_text) {
+            notice.append(make('p', '', t('questionAnswerQuestionUnchanged')));
+          }
+          const labels = {question_changed:'questionAnswerQuestionChanged', minutes_changed:'questionAnswerMinutesChanged',
+            closure_changed:'questionAnswerClosureChanged', status_changed:'questionAnswerStatusChanged',
+            appointment_changed:'questionAnswerAppointmentChanged', service_changed:'questionAnswerServiceChanged',
+            source_or_context_changed:'questionAnswerSourceChanged'};
+          for (const change of result.changes || []) {
+            if (labels[change]) notice.append(make('p', '', t(labels[change])));
+          }
+          if ((result.changes || []).includes('question_changed')) {
+            const original = make('details', 'question-answer-original-question');
+            original.append(make('summary', '', t('questionAnswerOriginalQuestion')),
+              make('p', 'question-text', result.previous_question_text || ''));
+            notice.append(original);
+          }
+          replacement.querySelector('.question-answer-content').prepend(notice);
+        } else badge.replaceWith(newHeading.firstElementChild);
+        panel.replaceWith(replacement);
         if (hadFocus) replacement.querySelector('summary').focus({preventScroll:true});
       } catch {
         if (!panel.isConnected) return;

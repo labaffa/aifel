@@ -25,12 +25,13 @@ def attach_summaries(connection, rows):
         return
     values = {r['source_question_id']: r for r in connection.execute('''SELECT source_question_id,
         coalesce(answer_snapshot->>'status','missing') AS status,
-        answer_snapshot->>'version' AS version,answer_snapshot->>'generated_at' AS generated_at
+        answer_snapshot->>'version' AS version,answer_snapshot->>'generated_at' AS generated_at,
+        coalesce(answer_snapshot->>'previous_available','false')='true' AS previous_available
         FROM curato.v_aifel_quesiti_archivio WHERE source_question_id=ANY(%s)''',
         ([r['source_question_id'] for r in rows],))}
     for row in rows:
         item = values.get(row['source_question_id'])
-        row['answer_summary'] = {key:item[key] for key in ('status','version','generated_at')} if item else {'status':'missing'}
+        row['answer_summary'] = {key:item[key] for key in ('status','version','generated_at','previous_available')} if item else {'status':'missing'}
 
 
 def public_answer(value):
@@ -64,6 +65,13 @@ def detail(connection, identity):
         return None
     snapshot = row['answer_snapshot'] or {}
     status = snapshot.get('status','missing')
-    return {'available':True,'source_question_id':identity,'status':status,
+    result = {'available':True,'source_question_id':identity,'status':status,
             'version':snapshot.get('version'),
             'answer':public_answer(snapshot.get('answer')) if status == 'available' else None}
+    if status == 'outdated' and snapshot.get('previous_available') is True:
+        result['previous_answer'] = public_answer(snapshot.get('previous_answer'))
+        allowed = {'question_changed','minutes_changed','closure_changed','status_changed',
+                   'appointment_changed','service_changed','source_or_context_changed'}
+        result['changes'] = [value for value in snapshot.get('changes', []) if value in allowed]
+        result['previous_question_text'] = snapshot.get('previous_question_text')
+    return result

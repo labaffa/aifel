@@ -174,6 +174,12 @@ snapshot deployments must set `AIFEL_DATA_BACKEND=snapshots` when updating.
 
 ## Verification
 
+Outdated question drafts can be opened explicitly with **Mostra bozza precedente**.
+The historical panel retains its outdated/pending-review status, generation date,
+source quotations and source-change reasons. The source publisher must include
+the optional historical snapshot; legacy outdated snapshots remain readable
+without a historical panel. Lists only transfer historical availability metadata.
+
 The question workspace supports holder administration, native external status
 and definitive closure filters alongside period, desk, measures and search.
 Administration names come from the published measure context's `administrations`

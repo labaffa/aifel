@@ -447,5 +447,16 @@
   "questionAnswerPreviewCount": "quesiti con bozza da verificare",
   "questionAnswerPreviewError": "Impossibile caricare l’anteprima.",
   "questionAnswerOutdated": "Risposta da rigenerare",
-  "questionAnswerOutdatedNotice": "Il quesito è stato aggiornato dopo la generazione della bozza. La risposta precedente deve essere rigenerata."
+  "questionAnswerOutdatedNotice": "Il quesito è stato aggiornato dopo la generazione della bozza. La risposta non è verificata rispetto alla versione attuale.",
+  "questionAnswerPreviousTitle": "Mostra bozza precedente",
+  "questionAnswerPreviousNotice": "Bozza precedente, conservata per consultazione. Non è stata verificata rispetto alla versione attuale del quesito e resta da valutare dal desk.",
+  "questionAnswerQuestionChanged": "Il testo della domanda è cambiato dopo la generazione.",
+  "questionAnswerQuestionUnchanged": "Il testo della domanda è rimasto invariato.",
+  "questionAnswerMinutesChanged": "Il verbale è stato aggiornato dopo la generazione.",
+  "questionAnswerClosureChanged": "La chiusura definitiva della pratica è cambiata dopo la generazione.",
+  "questionAnswerStatusChanged": "Lo stato della pratica è cambiato dopo la generazione.",
+  "questionAnswerAppointmentChanged": "La data dell’appuntamento è cambiata dopo la generazione.",
+  "questionAnswerServiceChanged": "Il servizio o il desk è cambiato dopo la generazione.",
+  "questionAnswerSourceChanged": "La versione dei dati sorgente o il contesto non corrisponde più a quello della bozza.",
+  "questionAnswerOriginalQuestion": "Domanda usata per generare questa bozza"
 }
