@@ -1,0 +1,462 @@
+{
+  "version": 1,
+  "layouts": {
+    "3196303": [
+      {
+        "sha256": "cf964160e4efa8f74fa005a561a2a1e5abd09f020536c026540fa58aeab66160",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Date e modelli della dichiarazione TE"
+          },
+          {
+            "start": 811,
+            "title": "Soggetti da rilevare e variazioni"
+          },
+          {
+            "start": 1495,
+            "title": "Conflitto di interessi"
+          }
+        ]
+      },
+      {
+        "sha256": "870403ea1b925940e24079baa2ab159ace96a8ba663f3fc2bf069a374ab0c88a",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Cronologia delle dichiarazioni"
+          },
+          {
+            "start": 351,
+            "title": "Istruzioni MIM per gli affidamenti"
+          },
+          {
+            "start": 1208,
+            "title": "Data di riferimento e firma"
+          },
+          {
+            "start": 1849,
+            "title": "Dichiarazioni mancanti o incomplete"
+          },
+          {
+            "start": 2766,
+            "title": "RTP e forme aggregate"
+          },
+          {
+            "start": 3763,
+            "title": "Subappalti e subaffidamenti"
+          },
+          {
+            "start": 4429,
+            "title": "Coerenza con il DGUE"
+          },
+          {
+            "start": 5226,
+            "title": "Conflitto di interessi"
+          },
+          {
+            "start": 7113,
+            "title": "Variazioni societarie successive"
+          }
+        ]
+      }
+    ],
+    "3220112": [
+      {
+        "sha256": "f997fc59094997bbc9ee5c1051bae801c822616bcd23f0604e59aa83e5e7b09e",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Richiesta di trasferimento intermedio"
+          },
+          {
+            "start": 663,
+            "title": "Importi e verifiche sul rendiconto"
+          }
+        ]
+      },
+      {
+        "sha256": "9fc416a04b47ed5e3ddcf30eda3f9900091152a6dd1ce1accdf4b0b7b95bc68b",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Rendiconto e richiesta di trasferimento"
+          },
+          {
+            "start": 280,
+            "title": "Riparto delle richieste per fonte"
+          },
+          {
+            "start": 750,
+            "title": "Verifica degli importi"
+          },
+          {
+            "start": 1449,
+            "title": "Compilazione della richiesta"
+          },
+          {
+            "start": 2151,
+            "title": "Procedura semplificata"
+          },
+          {
+            "start": 2983,
+            "title": "Distinzione rispetto al saldo"
+          }
+        ]
+      }
+    ],
+    "3221490": {
+      "sha256": "eed496dc2af3ad96699c31e26ca74ecef1947e41f03b82c07cc7214646fbedf0",
+      "sections": [
+        {
+          "start": 0,
+          "title": "Mensa scolastica"
+        },
+        {
+          "start": 884,
+          "title": "Via Reggiolo — medie opere"
+        }
+      ]
+    },
+    "3180339": [
+      {
+        "sha256": "73e4e7d8243643a78537ea912368af69a397f3d179e0835f2999e317216e213e",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Documenti per il rendiconto finale"
+          },
+          {
+            "start": 1021,
+            "title": "Trasferimenti e regime applicabile"
+          }
+        ]
+      },
+      {
+        "sha256": "0d1feeaf789bdcf33c8be26331b5563b222e08e2c283e9298cc53edbf13602dd",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Inquadramento e riferimenti"
+          },
+          {
+            "start": 1055,
+            "title": "Preparazione del rendiconto"
+          },
+          {
+            "start": 4015,
+            "title": "Termini e controlli finali"
+          }
+        ]
+      }
+    ],
+    "3222875": [
+      {
+        "sha256": "272c8d07b9a5b6080bb21576720568efcb53d892c3fb89fc32e03135447ac4a3",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Rendiconto intermedio e a saldo"
+          },
+          {
+            "start": 701,
+            "title": "Verifiche prima dell’invio"
+          },
+          {
+            "start": 1016,
+            "title": "Conclusione del progetto"
+          }
+        ]
+      },
+      {
+        "sha256": "ab7ce5f458b39c8ac1620b55cc567363ab2f1bcb45932ca33c26e2463e5ca8a4",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Rendiconto e trasferimento a saldo"
+          },
+          {
+            "start": 1178,
+            "title": "Flag intermedio o a saldo"
+          },
+          {
+            "start": 2123,
+            "title": "Rendicontazione delle spese sostenute"
+          },
+          {
+            "start": 2838,
+            "title": "Condizioni per il trasferimento finale"
+          }
+        ]
+      }
+    ],
+    "3221439": {
+      "sha256": "fac650ae200de96088f4abc0c1669b94cde7eda0f3c1fadf4ae6d2f741a81562",
+      "sections": [
+        {
+          "start": 0,
+          "title": "ReGiS e cofinanziamento comunale"
+        },
+        {
+          "start": 821,
+          "title": "Quadri economici FUTURA"
+        },
+        {
+          "start": 1549,
+          "title": "Verifiche prima del saldo"
+        }
+      ]
+    },
+    "3219924": [
+      {
+        "sha256": "3c116d69870ce738419c0204c5d273a6f86b657a30b9a5d7535397fa697f620c",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Censimento dei soggetti"
+          },
+          {
+            "start": 643,
+            "title": "Gestione del blocco e assistenza"
+          }
+        ]
+      },
+      {
+        "sha256": "2a308696069f6886d0733ee15a8faa9288a5aa7abb97a1d7d82e1c175329b929",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Soggetti da inserire"
+          },
+          {
+            "start": 759,
+            "title": "Ulteriori persone titolari effettive"
+          },
+          {
+            "start": 1220,
+            "title": "Impresa o ente non presente"
+          },
+          {
+            "start": 1889,
+            "title": "Segnalazione del blocco"
+          }
+        ]
+      }
+    ],
+    "3221701": {
+      "sha256": "0f0b2db7a425f5fab6734e72e54258c317f0be9f9890334ab26a1f65e0054259",
+      "sections": [
+        {
+          "start": 0,
+          "title": "Operatori economici e titolari effettivi"
+        },
+        {
+          "start": 1004,
+          "title": "In caso di blocco"
+        },
+        {
+          "start": 1452,
+          "title": "Limiti delle informazioni disponibili"
+        }
+      ]
+    },
+    "3207314": {
+      "sha256": "45819e5efc167d209b43dfe4eb2e2e55e1b23b94bc4015924835d969063ef810",
+      "sections": [
+        {
+          "start": 0,
+          "title": "Condizioni per il saldo"
+        },
+        {
+          "start": 515,
+          "title": "Rendiconto e pagamenti"
+        },
+        {
+          "start": 852,
+          "title": "Target e indicatori"
+        }
+      ]
+    },
+    "3222915": {
+      "sha256": "3be10859c7a0ff819f74b58b2b0cce848e613df5b75b1ab48eb9b44f64d8b986",
+      "sections": [
+        {
+          "start": 0,
+          "title": "ReGiS e fonti di finanziamento"
+        },
+        {
+          "start": 1031,
+          "title": "FUTURA e modifiche del quadro economico"
+        },
+        {
+          "start": 1654,
+          "title": "Target e richiesta di saldo"
+        }
+      ]
+    },
+    "3223094": [
+      {
+        "sha256": "2cc26d50926df04f510262fc444a1cb53c475deba0d5530706a2bf41dc2e2263",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Quota forfettaria e modalità di rendicontazione"
+          },
+          {
+            "start": 578,
+            "title": "Verifiche prima della rettifica"
+          },
+          {
+            "start": 957,
+            "title": "Incentivi e documentazione dei beneficiari"
+          }
+        ]
+      },
+      {
+        "sha256": "bd0e5a9b865834d46a107d7a879ff6e9f6c0431ff8c842a98f8ab27522a78f98",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Metodo di rendicontazione approvato"
+          },
+          {
+            "start": 698,
+            "title": "Rimborso a forfait"
+          },
+          {
+            "start": 1474,
+            "title": "Discordanza nelle istruzioni"
+          },
+          {
+            "start": 2172,
+            "title": "Rendicontazione a costi reali"
+          },
+          {
+            "start": 3245,
+            "title": "Incentivi per funzioni tecniche"
+          },
+          {
+            "start": 3965,
+            "title": "Documentazione dei beneficiari"
+          },
+          {
+            "start": 4950,
+            "title": "Tempistiche degli incentivi"
+          },
+          {
+            "start": 5656,
+            "title": "Evidenze del target"
+          }
+        ]
+      }
+    ],
+    "3197399": {
+      "sha256": "3431aaf401a7841e7b0030bbadacbf8354a552263729805a5dfd58c1bbfe8df1",
+      "sections": [
+        {
+          "start": 0,
+          "title": "Chiusura del target"
+        },
+        {
+          "start": 1023,
+          "title": "Rendicontazione finanziaria"
+        },
+        {
+          "start": 1607,
+          "title": "Verifiche sul progetto"
+        }
+      ]
+    },
+    "3223877": {
+      "sha256": "133d4979297b8ef2cbd8e41872fc6457e850c4c0643111bf4d1a2a492092a465",
+      "sections": [
+        {
+          "start": 0,
+          "title": "Checklist da esaminare"
+        },
+        {
+          "start": 393,
+          "title": "Controlli sulle spese e sulla chiusura"
+        },
+        {
+          "start": 1025,
+          "title": "Affidamenti, DNSH e termini"
+        }
+      ]
+    },
+    "3176813": [
+      {
+        "sha256": "55da6665ed0f1b2dd2cbcb0f3aec33e84e770213accf641d15071205d43369d9",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Soggetti, modelli e dichiarazioni"
+          },
+          {
+            "start": 1009,
+            "title": "Registrazione in ReGiS e controlli"
+          }
+        ]
+      },
+      {
+        "sha256": "7247dca4c1fc1a676011a111e973b7f52a4fe56ee710d1717873159044da920f",
+        "sections": [
+          {
+            "start": 0,
+            "title": "Ambito della rilevazione"
+          },
+          {
+            "start": 477,
+            "title": "Società e criteri di individuazione"
+          },
+          {
+            "start": 1257,
+            "title": "Comune e soggetti pubblici"
+          },
+          {
+            "start": 1968,
+            "title": "Affidamenti e comunicazioni"
+          },
+          {
+            "start": 3475,
+            "title": "Istruzioni MIM e date delle procedure"
+          },
+          {
+            "start": 4471,
+            "title": "Conflitto di interessi e controlli"
+          }
+        ]
+      }
+    ],
+    "3197428": {
+      "sha256": "0f0afd37ca0b4dd7abc5d1b2c9f1a71697df762bc55244edb93846829e11c252",
+      "sections": [
+        {
+          "start": 0,
+          "title": "Ambito e fasi della rilevazione"
+        },
+        {
+          "start": 782,
+          "title": "Enti pubblici e operatori economici"
+        }
+      ]
+    },
+    "3196881": {
+      "sha256": "0ad6803a6edec0fa96fe3bdfc8d0bf996f165a630b1c5cd420b762b3f79c6602",
+      "sections": [
+        {
+          "start": 0,
+          "title": "Certificazione conclusiva e target"
+        },
+        {
+          "start": 947,
+          "title": "Rendiconto e quadro economico"
+        },
+        {
+          "start": 1481,
+          "title": "Scadenze e verifiche attuali"
+        }
+      ]
+    }
+  }
+}

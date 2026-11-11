@@ -225,12 +225,15 @@ def questions_archive() -> Any:
 
 @app.get('/api/questions/<identity>/answer')
 def question_answer(identity: str) -> Any:
-    if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',identity) or request.args:
+    version = request.args.get('version')
+    if (not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',identity)
+            or set(request.args) - {'version'} or len(request.args.getlist('version')) > 1
+            or (version is not None and not re.fullmatch(r'[a-f0-9]{64}:[1-9][0-9]{0,8}',version))):
         abort(400,description='Invalid question answer request.')
     if app.config['DATA_BACKEND'] != 'postgres':
         return jsonify({'available':False,'source_question_id':identity,'status':'unavailable','answer':None})
     with data_repository.connect() as connection:
-        payload = answers_repository.detail(connection,identity)
+        payload = answers_repository.detail(connection,identity,version)
     if payload is None:
         abort(404,description='Unknown question.')
     return jsonify(data_repository.public_value(payload))
