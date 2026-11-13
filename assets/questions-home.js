@@ -1,7 +1,7 @@
 /* One set of filters for demand counts and the appointment list. */
 (async () => {
   await window.aifelConsultation.ready;
-  if (new URLSearchParams(location.search).has('cup')) return;
+  if (new URLSearchParams(location.search).has('embedded')) return;
   const t = key => window.aifelConsultation.text(key, key);
   const make = (tag, cls, text) => {
     const node = document.createElement(tag);
@@ -12,6 +12,14 @@
   const host = document.querySelector('#questions-home');
   const title = make('h2', '', t('questionsWorkspace'));
   const filters = make('div', 'question-home-filters question-shared-filters');
+  const toolbar = make('div', 'question-search-toolbar');
+  const filterChips = make('div', 'filter-chips');
+  const filterSection = make('section', 'inline-filters');
+  const filterHeading = make('h3', '', 'Filtri');
+  const filterActions = make('div', 'inline-filter-header');
+  const clearFilters = make('button', 'text-button', 'Azzera filtri'); clearFilters.type = 'button';
+  filterActions.append(filterHeading, clearFilters);
+  filterSection.append(filterActions, filters);
   function selectField(id, label, values) {
     const field = make('div');
     const caption = make('label', '', label); caption.htmlFor = id;
@@ -128,18 +136,29 @@
   measure.addEventListener('keydown', event => {
     if (event.key === 'Escape') { measure.open = false; measureSummary.focus(); }
   });
-  const searchField = make('div');
+  const searchField = make('form');
   const searchLabel = make('label', '', t('questionsSearch')); searchLabel.htmlFor = 'questions-search';
   const search = make('input'); search.id = 'questions-search'; search.type = 'search'; search.maxLength = 200;
-  search.placeholder = t('questionsSearchHint'); searchField.append(searchLabel, search); filters.append(searchField);
+  search.placeholder = t('questionsSearchHint'); searchField.append(searchLabel, search);
+  toolbar.append(searchField);
   const demand = make('section', 'question-demand'); demand.id = 'questions-demand';
   demand.setAttribute('aria-labelledby', 'demand-title');
-  const demandTitle = make('h3', '', t('demandTitle')); demandTitle.id = 'demand-title';
+  const demandTitle = make('label', '', 'Argomento'); demandTitle.id = 'demand-title'; demandTitle.htmlFor = 'questions-topic';
+  const demandHeader = make('div', 'topic-heading');
+  const info = make('details', 'topic-info');
+  const infoToggle = make('summary', 'topic-info-toggle', 'i');
+  infoToggle.setAttribute('aria-label', 'Informazioni sulla classificazione degli argomenti');
+  const infoPanel = make('div', 'topic-info-panel');
+  infoPanel.append(make('p', '', 'Gli argomenti sono assegnati tramite una classificazione con intelligenza artificiale.'));
+  info.append(infoToggle, infoPanel);
+  demandHeader.append(demandTitle, info);
   const status = make('p', 'consultation-note'); status.setAttribute('aria-live', 'polite');
   const freshness = make('p', 'consultation-note');
-  const groups = make('div', 'demand-groups');
+  const groups = make('select', 'demand-groups'); groups.id = 'questions-topic';
   const note = make('p', 'consultation-note', t('demandMultiLabel'));
-  demand.append(demandTitle, status, freshness, groups, note);
+  infoPanel.append(status, freshness, note);
+  demand.append(demandHeader, groups);
+  filters.append(demand);
   const listHeading = make('div', 'question-list-heading');
   const listTitle = make('h3', '', t('questionsUpcoming'));
   const clearCategory = make('button', 'text-button', t('demandClearCategory')); clearCategory.type = 'button'; clearCategory.hidden = true;
@@ -147,10 +166,52 @@
   const count = make('p', 'consultation-note'); count.setAttribute('aria-live', 'polite');
   const list = make('div', 'question-list'); list.id = 'questions-results';
   const controls = make('div', 'question-controls');
-  host.append(title, filters, demand, listHeading, count, list, controls);
+  const layout = make('div', 'workspace-layout');
+  const sidebar = make('aside', 'workspace-sidebar');
+  const sidebarTitle = make('h3', '', 'Cerca e filtra');
+  const sidebarToggle = make('button', 'workspace-controls-toggle', 'Cerca e filtra ');
+  sidebarToggle.type = 'button'; sidebarToggle.setAttribute('aria-expanded', 'false');
+  sidebarToggle.setAttribute('aria-controls', 'question-workspace-controls');
+  sidebarToggle.append(make('span', 'workspace-filter-count'));
+  const sidebarControls = make('div', 'workspace-controls'); sidebarControls.id = 'question-workspace-controls';
+  sidebarControls.append(sidebarTitle, toolbar, filterChips, filterSection);
+  sidebar.append(sidebarToggle, sidebarControls);
+  const main = make('div', 'workspace-main');
+  main.append(listHeading, count, list, controls);
+  layout.append(sidebar, main);
+  host.append(title, layout);
+  window.aifelFilterDrawer.setupResponsive(sidebarToggle, sidebarControls);
   let category = null, offset = 0, generation = 0, timer, controller, projectOpened = false;
-  window.addEventListener('aifel:project-opened', () => {
-    projectOpened = true; generation += 1; controller?.abort(); clearTimeout(timer); host.hidden = true;
+  let categoryLabel = '';
+  function updateFilterChips() {
+    filterChips.replaceChildren();
+    function chip(label, remove) {
+      const node = make('span', 'filter-chip');
+      node.append(make('span', 'filter-chip-label', label));
+      const button = make('button', 'filter-chip-clear', '×'); button.type = 'button';
+      button.setAttribute('aria-label', 'Rimuovi filtro ' + label);
+      button.addEventListener('click', () => { remove(); reset(false); });
+      node.append(button); filterChips.append(node);
+    }
+    for (const field of [period, desk, administration, externalStatus, closed]) {
+      if (field.value === '*' || (field === period && field.value === 'all')) continue;
+      const label = field.previousElementSibling.textContent + ': ' + (field.selectedOptions[0]?.textContent || field.value);
+      chip(label, () => { field.value = field === period ? 'all' : '*'; });
+    }
+    for (const code of selectedMeasures) {
+      chip(t('questionMeasureFilter') + ': ' + (measureLabels.get(code) || code), () => {
+        selectedMeasures.delete(code); updateMeasureSummary();
+      });
+    }
+    if (category) chip('Argomento: ' + (categoryLabel || category), () => { category = null; categoryLabel = ''; });
+    filterChips.hidden = !filterChips.childElementCount;
+    sidebarToggle.querySelector('.workspace-filter-count').textContent = filterChips.childElementCount ?
+      '(' + filterChips.childElementCount + ')' : '';
+  }
+  clearFilters.addEventListener('click', () => {
+    period.value = 'fortnight';
+    for (const field of [desk, administration, externalStatus, closed]) field.value = '*';
+    selectedMeasures.clear(); category = null; categoryLabel = ''; updateMeasureSummary(); reset(false);
   });
   function renderGroups(result) {
     const historical = ['all', 'past'].includes(period.value);
@@ -166,23 +227,24 @@
     if (!result.demand_available) {
       status.textContent = t('demandUnavailable'); freshness.textContent = ''; return;
     }
-    function groupButton(code, label, total) {
-      const button = make('button', 'demand-group'); button.type = 'button';
-      button.append(make('strong', 'demand-count', String(total)), make('span', '', label));
-      button.setAttribute('aria-pressed', String(category === code));
-      button.setAttribute('aria-controls', list.id);
-      button.addEventListener('click', () => {
-        category = category === code ? null : code; reset(false);
-      });
-      groups.append(button);
+    const allTopics = make('option', '', 'Tutti gli argomenti'); allTopics.value = ''; groups.append(allTopics);
+    function groupOption(code, label, total) {
+      const option = make('option', '', label + ' (' + total + ')');
+      option.value = code; option.dataset.label = label; groups.append(option);
     }
     for (const item of result.categories) {
-      if (item.question_count || category === item.code) groupButton(item.code, item.label, item.question_count);
+      if (item.question_count || category === item.code) groupOption(item.code, item.label, item.question_count);
     }
     if (result.unclassified_questions || category === 'unclassified') {
-      groupButton('unclassified', t('demandUnclassified'), result.unclassified_questions);
+      groupOption('unclassified', t('demandUnclassified'), result.unclassified_questions);
     }
+    groups.value = category || '';
   }
+  groups.addEventListener('change', () => {
+    category = groups.value || null;
+    categoryLabel = groups.selectedOptions[0]?.dataset.label || '';
+    reset(false);
+  });
   function questionRow(row) {
     const wrapper = make('div', 'demand-question');
     const card = window.aifelQuestions.questionCard(row);
@@ -275,20 +337,22 @@
       if (token === generation) host.setAttribute('aria-busy', 'false');
     }
   }
-  function reset(clear = true) {
+  function reset(clear = false) {
     controller?.abort(); clearTimeout(timer); generation += 1; offset = 0;
-    if (clear) category = null;
+    if (clear) { category = null; categoryLabel = ''; }
+    updateFilterChips();
     list.replaceChildren(); groups.replaceChildren(); status.textContent = t('loading');
     count.textContent = ''; clearCategory.hidden = !category;
     load(generation);
   }
-  clearCategory.addEventListener('click', () => reset());
-  for (const field of [period, desk, administration, externalStatus, closed]) field.addEventListener('change', () => reset());
+  clearCategory.addEventListener('click', () => reset(true));
+  for (const field of [period, desk, administration, externalStatus, closed]) field.addEventListener('change', () => reset(field === period && ['all', 'past'].includes(period.value)));
   search.addEventListener('input', () => {
     controller?.abort(); generation += 1; clearTimeout(timer);
     // Do not leave results from the previous query visible during debounce.
     list.replaceChildren(); groups.replaceChildren(); count.textContent = ''; status.textContent = t('loading');
     timer = setTimeout(() => reset(false), 250);
   });
+  searchField.addEventListener('submit', event => { event.preventDefault(); reset(false); });
   reset();
 })();

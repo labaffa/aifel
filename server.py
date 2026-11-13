@@ -62,6 +62,67 @@ def cups() -> Any:
     return jsonify({"cups": available_cups(APP_DATA_ROOT.resolve())})
 
 
+@app.get('/api/search')
+def search() -> Any:
+    filters = {name: (request.args.get(name) or '').strip()
+               for name in ('q', 'titolo', 'comune', 'ente', 'misura', 'approfondimento')}
+    kind = filters.pop('approfondimento')
+    if kind not in ('', 'any', 'procurement', 'referents', 'questions'):
+        abort(400)
+    try:
+        limit = min(max(int(request.args.get('limit') or data_repository.SEARCH_LIMIT), 1),
+                    data_repository.SEARCH_MAX_LIMIT)
+    except (TypeError, ValueError):
+        limit = data_repository.SEARCH_LIMIT
+    try:
+        offset = max(int(request.args.get('offset') or 0), 0)
+    except (TypeError, ValueError):
+        offset = 0
+    payload = {**filters, 'available': True, 'total': 0, 'results': [], 'limit': limit, 'offset': offset}
+    if app.config['DATA_BACKEND'] != 'postgres':
+        return jsonify({**payload, 'available': False})
+    for name in ('q', 'titolo'):
+        value = filters[name]
+        if value and len(value) < data_repository.SEARCH_MIN_LENGTH:
+            return jsonify({**payload, 'tooShort': True})
+    if not any(filters.values()) and not kind:
+        return jsonify(payload)
+    try:
+        with data_repository.connect() as connection:
+            if not data_repository.search_available(connection):
+                return jsonify({**payload, 'available': False})
+            cups = None
+            if kind:
+                cups = set()
+                if kind in ('any', 'procurement'):
+                    cups.update(data_repository.available_cups(connection))
+                if kind in ('any', 'referents'):
+                    cups.update(row['cup'] for row in referents_repository.directory(connection))
+                if kind in ('any', 'questions'):
+                    cups.update(row['cup'] for row in questions_repository.directory(connection))
+            found = data_repository.search_projects(connection, limit=limit, offset=offset,
+                                                    cups=sorted(cups) if cups is not None else None, **filters)
+        return jsonify({**payload, 'total': found['total'], 'results': found['results']})
+    except psycopg.errors.QueryCanceled:
+        return jsonify({**payload, 'timeout': True})
+
+
+@app.get('/api/suggest')
+def suggest() -> Any:
+    field = (request.args.get('campo') or '').strip()
+    query = (request.args.get('q') or '').strip()
+    if field not in ('comune', 'ente', 'misura'):
+        abort(400)
+    if app.config['DATA_BACKEND'] != 'postgres':
+        return jsonify({'available': False, 'values': []})
+    try:
+        with data_repository.connect() as connection:
+            values = data_repository.search_suggestions(connection, field, query)
+        return jsonify({'available': True, 'values': values})
+    except psycopg.errors.QueryCanceled:
+        return jsonify({'available': True, 'values': []})
+
+
 @app.get('/api/publication')
 def publication() -> Any:
     if app.config['DATA_BACKEND']=='snapshots':

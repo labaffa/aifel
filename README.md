@@ -1,5 +1,21 @@
 # aifel
 
+## Project search and question workspace
+
+The home opens the questions workspace; the Projects tab searches the published
+CUP–CLP registry by text, municipality, implementing entity, measure and available
+CUP-level investigations. A cited CUP in a question opens the same consultation
+in a temporary panel. The two tabs keep separate filters. The application preserves
+source CLP identities and does not infer CLP-level attribution from CUP citations.
+
+Text search requires the optional `curato.ricerca_progetti` and
+`curato.ricerca_valori` tables, the `curato.norm(text)` function, and the published
+project, location and implementing-entity tables. It is unavailable in snapshot
+mode or when its derived tables are missing; direct CUP consultation remains
+available. Install and refresh the search data using the IFEL workspace deployment
+runbook; application deployment alone does not prepare the database. The app's
+database role needs schema `USAGE`, table `SELECT` and function `EXECUTE` privileges.
+
 The shared question card includes a read-only AI answer panel in
 `assets/question-answer.js`. Question lists supply `answer_summary`; opening a
 panel calls `/api/questions/<id>/answer` through `answers_repository.py`. Both

@@ -95,7 +95,15 @@ window.aifelQuestions = (() => {
         links.append(make('span', 'question-reference-label', t('questionCupLabel')));
         for (const cup of cups) {
           const link = make('a', 'question-citation', cup); link.href = '/?cup=' + encodeURIComponent(cup);
-          link.addEventListener('click', event => event.stopPropagation()); links.append(link);
+          link.addEventListener('click', event => {
+            event.stopPropagation();
+            if (!event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey &&
+                !event.shiftKey && !event.altKey && link.closest('#questions-home') && window.aifelOpenCupPreview) {
+              event.preventDefault();
+              window.aifelOpenCupPreview(cup, link);
+            }
+          });
+          links.append(link);
         }
         return links;
       }

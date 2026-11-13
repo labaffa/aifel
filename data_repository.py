@@ -8,6 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 import os
 import re
+import unicodedata
 from typing import Any, Iterator
 
 import psycopg
@@ -95,6 +96,123 @@ def collected_cup_summaries(connection: psycopg.Connection, cups: list[str]) -> 
         if municipality and municipality not in summaries[row['cup']]['municipalities']:
             summaries[row['cup']]['municipalities'].append(municipality)
     return public_value(list(summaries.values()))
+
+
+SEARCH_TABLE = 'curato.ricerca_progetti'
+SEARCH_VALUES_TABLE = 'curato.ricerca_valori'
+SEARCH_MIN_LENGTH = 3
+SEARCH_LIMIT = 25
+SEARCH_MAX_LIMIT = 100
+SEARCH_MAX_WORDS = 6
+SEARCH_SUGGEST_LIMIT = 10
+SEARCH_VALUE_FIELDS = {
+    'comune': ('curato.v_aifel_localizzazioni', 'descrizione_comune'),
+    'ente': ('curato.v_aifel_soggetti_attuatori', 'denominazione'),
+}
+
+
+def search_available(connection: psycopg.Connection) -> bool:
+    """The search tables are publication artifacts and may be absent."""
+    return connection.execute(
+        'SELECT to_regclass(%s) IS NOT NULL AND to_regclass(%s) IS NOT NULL AS available',
+        (SEARCH_TABLE, SEARCH_VALUES_TABLE)).fetchone()['available']
+
+
+def search_text(value: str) -> str:
+    """Upper-case and strip diacritics, mirroring curato.norm() in the database."""
+    decomposed = unicodedata.normalize('NFKD', value or '')
+    return ''.join(char for char in decomposed if not unicodedata.combining(char)).upper()
+
+
+def like_pattern(value: str) -> str:
+    escaped = search_text(value).strip().replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    return '%' + escaped + '%'
+
+
+def search_patterns(query: str) -> list[str]:
+    words = [word for word in re.split(r'\s+', query.strip()) if word]
+    return [like_pattern(word) for word in words[:SEARCH_MAX_WORDS]]
+
+
+def search_conditions(q: str = '', titolo: str = '', comune: str = '',
+                      ente: str = '', misura: str = '') -> tuple[list[str], list]:
+    """Combine the free-text box with the per-field filters using AND."""
+    conditions: list[str] = []
+    params: list = []
+    for column, value in (('testo', q), ('testo_titolo', titolo)):
+        for pattern in search_patterns(value):
+            conditions.append(f'{column} LIKE %s')
+            params.append(pattern)
+    for field, value in (('comune', comune), ('ente', ente)):
+        if value.strip():
+            table, column = SEARCH_VALUE_FIELDS[field]
+            conditions.append(f'''(cup,codice_locale_progetto) IN
+                (SELECT cup,codice_locale_progetto FROM {table} WHERE btrim({column}) = %s)''')
+            params.append(value.strip())
+    if misura.strip():
+        conditions.append('(btrim(id_misura) = %s OR btrim(descrizione_misura) = %s)')
+        params.extend([misura.strip(), misura.strip()])
+    return conditions, params
+
+
+def search_projects(connection: psycopg.Connection, q: str = '', titolo: str = '',
+                    comune: str = '', ente: str = '', misura: str = '',
+                    limit: int = SEARCH_LIMIT, offset: int = 0, cups: list[str] | None = None) -> dict:
+    """Free-text and per-field search with a total count for paging."""
+    conditions, params = search_conditions(q, titolo, comune, ente, misura)
+    if cups is not None:
+        conditions.append('cup = ANY(%s)')
+        params.append(cups)
+    if not conditions:
+        return {'total': 0, 'results': []}
+    where = ' AND '.join(conditions)
+    total = connection.execute(
+        f'SELECT count(*) AS found FROM {SEARCH_TABLE} WHERE {where}', params).fetchone()['found']
+    patterns = search_patterns(q) or search_patterns(titolo)
+    if patterns:
+        ordering = ("ORDER BY (coalesce(curato.norm(titolo_progetto),'') LIKE %s) DESC,"
+                    " CASE WHEN coalesce(curato.norm(titolo_progetto),'') LIKE %s"
+                    " THEN length(coalesce(titolo_progetto,'')) END,"
+                    " nullif(titolo_progetto,'') NULLS LAST, cup, codice_locale_progetto")
+        order_params = patterns[:1] * 2
+    else:
+        ordering = 'ORDER BY nullif(titolo_progetto,\'\') NULLS LAST, cup, codice_locale_progetto'
+        order_params = []
+    rows = connection.execute(
+        f'''SELECT cup,codice_locale_progetto,titolo_progetto,id_misura,descrizione_misura,comuni,attuatori
+            FROM {SEARCH_TABLE} WHERE {where} {ordering} LIMIT %s OFFSET %s''',
+        [*params, *order_params, limit, offset]).fetchall()
+    return {'total': total, 'results': public_value([dict(row) for row in rows])}
+
+
+def search_suggestions(connection: psycopg.Connection, field: str, query: str = '',
+                       limit: int = SEARCH_SUGGEST_LIMIT) -> list[dict]:
+    """Autocomplete values for the filters, prefix matches first."""
+    if field not in ('comune', 'ente', 'misura'):
+        raise ValueError('unknown suggestion field')
+    patterns = search_patterns(query)
+    prefix = search_text(query).replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    if field == 'misura':
+        conditions = ''.join(" AND curato.norm(coalesce(id_misura, '') || ' ' || coalesce(descrizione_misura, '')) LIKE %s" for _ in patterns)
+        rows = connection.execute(
+            f'''SELECT coalesce(nullif(btrim(id_misura), ''), btrim(descrizione_misura)) AS valore,
+                CASE WHEN nullif(btrim(id_misura), '') IS NULL THEN btrim(descrizione_misura)
+                     ELSE btrim(id_misura) || ' · ' || btrim(descrizione_misura) END AS label,
+                count(*) AS progetti
+                FROM {SEARCH_TABLE}
+                WHERE nullif(btrim(descrizione_misura), '') IS NOT NULL {conditions}
+                GROUP BY 1,2 ORDER BY (curato.norm(coalesce(nullif(btrim(id_misura), ''), btrim(descrizione_misura))) LIKE %s) DESC,
+                progetti DESC, label LIMIT %s''',
+            (*patterns, f'{prefix}%', limit)).fetchall()
+        return public_value([dict(row) for row in rows])
+    conditions = ''.join(' AND valore_norm LIKE %s' for _ in patterns)
+    rows = connection.execute(
+        f'''SELECT valore, progetti FROM {SEARCH_VALUES_TABLE}
+            WHERE campo = %s{conditions}
+            ORDER BY (valore_norm LIKE %s) DESC, progetti DESC, valore
+            LIMIT %s''',
+        (field, *patterns, f'{prefix}%', limit)).fetchall()
+    return public_value([dict(row) for row in rows])
 
 
 def publication_status(connection: psycopg.Connection) -> dict:

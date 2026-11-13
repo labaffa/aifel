@@ -10,14 +10,15 @@
     <link rel="stylesheet" href="/assets/tabs.css">
     <link rel="stylesheet" href="/assets/procedures-table.css">
     <link rel="stylesheet" href="/assets/consultation.css">
+    <script>if (new URLSearchParams(location.search).has('embedded')) document.documentElement.classList.add('embedded-cup');</script>
     <script src="/assets/consultation.js" defer></script>
     <script src="/assets/progress.js" defer></script>
     <script src="/assets/question-answer.js" defer></script>
     <script src="/assets/questions.js" defer></script>
+    <script src="/assets/filter-drawer.js" defer></script>
     <script src="/assets/questions-home.js" defer></script>
     <script src="/assets/referents.js" defer></script>
     <script src="/assets/project-navigation.js" defer></script>
-    <script src="/assets/investigation-explorer.js" defer></script>
     <script src="/assets/app.js" defer></script>
   </head>
   <body>
@@ -36,25 +37,83 @@
         <div class="hero-pattern" aria-hidden="true"></div>
       </section>
 
-      <section class="search-wrap" id="ricerca" aria-label="Ricerca per CUP">
+      <nav class="home-tabs content-width" role="tablist" aria-label="Sezioni principali">
+        <button type="button" role="tab" id="home-tab-questions" aria-controls="home-questions" aria-selected="true">Quesiti</button>
+        <button type="button" role="tab" id="home-tab-projects" aria-controls="home-projects" aria-selected="false">Progetti</button>
+      </nav>
+
+      <div id="home-questions" role="tabpanel" aria-labelledby="home-tab-questions">
+        <section id="questions-home" class="questions-home content-width" hidden></section>
+      </div>
+      <div id="home-projects" role="tabpanel" aria-labelledby="home-tab-projects" hidden>
+      <div class="workspace-layout content-width">
+      <section class="search-wrap" id="ricerca" aria-label="Ricerca progetti">
         <div class="search-panel">
+          <button class="workspace-controls-toggle" type="button" aria-expanded="false" aria-controls="project-workspace-controls">Cerca e filtra <span class="workspace-filter-count"></span></button>
+          <div id="project-workspace-controls" class="workspace-controls">
           <div class="search-heading">
             <span class="section-mark" aria-hidden="true"></span>
             <div><div class="eyebrow dark">CONSULTA I DATI</div><h2>Cerca un progetto</h2></div>
           </div>
           <form id="search-form" class="search-form">
-            <label class="sr-only" for="cup-input">Codice CUP</label>
-            <input id="cup-input" name="cup" type="text" maxlength="15" placeholder="Inserisci il codice CUP" autocomplete="off" spellcheck="false" required>
-            <button type="submit">Cerca <span aria-hidden="true">→</span></button>
+            <label class="sr-only" for="cup-input">CUP o testo</label>
+            <input id="cup-input" name="cup" type="text" placeholder="CUP esatto oppure titolo, comune, ente" autocomplete="off" spellcheck="false">
+            <button id="open-exact-cup" class="open-exact-cup" type="submit" hidden></button>
           </form>
-          <div class="search-meta"><span id="search-hint"></span><button id="show-examples" class="text-button" type="button" aria-expanded="false" aria-controls="examples"></button></div>
-          <div id="examples" class="examples" hidden></div>
+
+          <div class="filters" id="filters">
+            <div id="filter-chips" class="filter-chips" hidden></div>
+            <section class="inline-filters" aria-labelledby="project-filter-title">
+              <div class="inline-filter-header"><h3 id="project-filter-title">Filtri</h3><button id="filters-clear" class="text-button" type="button">Azzera filtri</button></div>
+              <div id="filters-body" class="filters-body">
+              <p class="consultation-note">Digita e scegli un valore dall'elenco per applicare un filtro.</p>
+              <div class="filter-field">
+                <label for="filter-comune">Comune</label>
+                <input id="filter-comune" type="text" autocomplete="off" spellcheck="false" placeholder="es. catania" role="combobox" aria-autocomplete="list" aria-expanded="false">
+              </div>
+              <div class="filter-field">
+                <label for="filter-ente">Ente attuatore</label>
+                <input id="filter-ente" type="text" autocomplete="off" spellcheck="false" placeholder="es. comune di catania" role="combobox" aria-autocomplete="list" aria-expanded="false">
+              </div>
+              <div class="filter-field">
+                <label for="filter-misura">Misura</label>
+                <input id="filter-misura" type="text" autocomplete="off" spellcheck="false" placeholder="es. parità di genere" role="combobox" aria-autocomplete="list" aria-expanded="false">
+              </div>
+              <div class="filter-field">
+                <label for="filter-approfondimento">Approfondimenti disponibili per il CUP</label>
+                <select id="filter-approfondimento">
+                  <option value="">Tutti i progetti</option>
+                  <option value="any">Almeno un approfondimento</option>
+                  <option value="procurement">Gare e CIG</option>
+                  <option value="referents">Referenti e recapiti</option>
+                  <option value="questions">Quesiti collegati al CUP</option>
+                </select>
+              </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="search-meta"><span id="search-hint"></span></div>
+          </div>
         </div>
       </section>
-
-      <section id="questions-home" class="questions-home content-width" hidden></section>
+      <div class="workspace-main">
+      <p id="project-search-empty" class="consultation-note">Cerca un CUP o inserisci un testo per esplorare i progetti.</p>
+      <div id="search-results" class="search-results" aria-live="polite" hidden></div>
       <section id="message" class="message" aria-live="polite" hidden></section>
       <section id="results" class="results content-width" aria-live="polite" hidden></section>
+      </div>
+      </div>
+      </div>
+
+      <dialog id="cup-preview" class="cup-preview" aria-labelledby="cup-preview-title">
+        <div class="cup-preview-header">
+          <h2 id="cup-preview-title">Scheda CUP</h2>
+          <a id="cup-preview-full" class="text-button">Apri scheda completa</a>
+          <button id="cup-preview-close" class="text-button" type="button">Chiudi e torna al quesito</button>
+        </div>
+        <iframe id="cup-preview-frame" title="Consultazione del CUP"></iframe>
+      </dialog>
 
     </main>
 

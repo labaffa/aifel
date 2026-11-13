@@ -1,10 +1,120 @@
 const form = document.querySelector('#search-form');
 const input = document.querySelector('#cup-input');
+const openExactCup = document.querySelector('#open-exact-cup');
 const message = document.querySelector('#message');
 const results = document.querySelector('#results');
-const examples = document.querySelector('#examples');
-const examplesButton = document.querySelector('#show-examples');
 const searchHint = document.querySelector('#search-hint');
+const searchResults = document.querySelector('#search-results');
+const filterChips = document.querySelector('#filter-chips');
+const filtersClear = document.querySelector('#filters-clear');
+const filterFields = {
+  comune: document.querySelector('#filter-comune'),
+  ente: document.querySelector('#filter-ente'),
+  misura: document.querySelector('#filter-misura'),
+  approfondimento: document.querySelector('#filter-approfondimento'),
+};
+const homeTabs = {
+  questions: document.querySelector('#home-tab-questions'),
+  projects: document.querySelector('#home-tab-projects'),
+};
+const homePanels = {
+  questions: document.querySelector('#home-questions'),
+  projects: document.querySelector('#home-projects'),
+};
+const preview = document.querySelector('#cup-preview');
+const previewFrame = document.querySelector('#cup-preview-frame');
+const previewFull = document.querySelector('#cup-preview-full');
+let previewOpener = null;
+let projectRestorePending = false;
+
+function selectHomeTab(name, updateUrl = false) {
+  for (const key of Object.keys(homeTabs)) {
+    const active = key === name;
+    homeTabs[key].setAttribute('aria-selected', String(active));
+    homeTabs[key].tabIndex = active ? 0 : -1;
+    homePanels[key].hidden = !active;
+  }
+  if (updateUrl) {
+    const url = new URL(location.href);
+    url.searchParams.set('tab', name);
+    url.searchParams.delete('preview_cup');
+    history.pushState({homeTab: name}, '', url);
+  }
+}
+for (const [name, tab] of Object.entries(homeTabs)) {
+  tab.addEventListener('click', () => {
+    selectHomeTab(name, true);
+    if (name === 'projects' && projectRestorePending) {
+      projectRestorePending = false;
+      restoreSearchFromUrl();
+    }
+  });
+  tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    const next = name === 'questions' ? 'projects' : 'questions';
+    selectHomeTab(next, true);
+    homeTabs[next].focus();
+  });
+}
+document.querySelector('.nav-search').addEventListener('click', () => selectHomeTab('projects', true));
+
+function showCupPreview(cup, opener = null) {
+  if (!/^[A-Z0-9]{15}$/.test(cup)) return;
+  previewOpener = opener;
+  previewFrame.src = '/?cup=' + encodeURIComponent(cup) + '&embedded=1';
+  previewFull.href = '/?cup=' + encodeURIComponent(cup);
+  document.querySelector('#cup-preview-title').textContent = 'Scheda CUP ' + cup;
+  if (!preview.open) preview.showModal();
+}
+window.aifelOpenCupPreview = (cup, opener) => {
+  const url = new URL(location.href);
+  url.searchParams.set('tab', 'questions');
+  url.searchParams.set('preview_cup', cup);
+  history.pushState({cupPreview: true}, '', url);
+  showCupPreview(cup, opener);
+};
+function closeCupPreview() {
+  if (history.state?.cupPreview) history.back();
+  else {
+    const url = new URL(location.href);
+    url.searchParams.delete('preview_cup');
+    history.replaceState(null, '', url);
+    preview.close();
+  }
+}
+document.querySelector('#cup-preview-close').addEventListener('click', closeCupPreview);
+preview.addEventListener('cancel', event => { event.preventDefault(); closeCupPreview(); });
+preview.addEventListener('close', () => {
+  previewFrame.src = 'about:blank';
+  previewOpener?.focus();
+});
+window.addEventListener('popstate', () => {
+  const params = new URLSearchParams(location.search);
+  const cup = params.get('preview_cup');
+  selectHomeTab(cup ? 'questions' : (params.get('tab') || (params.has('cup') ? 'projects' : 'questions')));
+  if (!cup && params.get('tab') === 'projects' && projectRestorePending) {
+    projectRestorePending = false;
+    restoreSearchFromUrl();
+  }
+  if (cup) showCupPreview(cup);
+  else if (preview.open) preview.close();
+});
+const initialParams = new URLSearchParams(location.search);
+projectRestorePending = initialParams.get('tab') === 'questions' &&
+  ['cup', 'q', 'comune', 'ente', 'misura', 'approfondimento'].some(key => initialParams.has(key));
+selectHomeTab(initialParams.get('tab') === 'questions' ? 'questions' :
+  initialParams.has('cup') || initialParams.get('tab') === 'projects' ||
+  ['q', 'comune', 'ente', 'misura', 'approfondimento'].some(key => initialParams.has(key)) ? 'projects' : 'questions');
+if (initialParams.has('preview_cup')) showCupPreview(initialParams.get('preview_cup'));
+const selectedFilters = { comune: '', ente: '', misura: '', approfondimento: '' };
+const SEARCH_MIN_LENGTH = 3;
+const SEARCH_DELAY = 250;
+const SEARCH_PAGE = 25;
+const CUP_PATTERN = /^[A-Z0-9]{15}$/;
+let searchTimer = null;
+let searchSequence = 0;
+let shownResults = 0;
 let repositoryMessages = {
   publishedAt: 'Data published on',
   notCollected: 'Procurement collection has not been run for this project yet.',
@@ -12,6 +122,15 @@ let repositoryMessages = {
   reviewedEmpty: 'No procedures were included after review.',
   unknownCup: 'No project or procurement data was found for this CUP.',
   searchHint: 'Search any CUP in the archive.',
+  searchNoResults: 'No project matches the search.',
+  searchUnavailable: 'Text search is not available in this publication.',
+  searchTooSlow: 'The search took too long: narrow the text.',
+  searchTooShort: 'Enter at least 3 characters, or a 15-character CUP.',
+  searchResults: 'projects found',
+  searchOneResult: '1 project found',
+  searchMore: 'Show more',
+  filterLabels: { titolo: 'Title', comune: 'Municipality', ente: 'Implementer', misura: 'Measure' },
+  filterRemove: 'Remove filter',
   investigationCups: 'CUPs with investigations',
   hideInvestigationCups: 'Hide CUPs with investigations',
   investigation_procurement: 'Tenders and CIG',
@@ -42,7 +161,6 @@ const messagesReady = fetch('/assets/messages.it.json')
 
 messagesReady.then(() => {
   searchHint.textContent = repositoryMessages.searchHint;
-  updateExamplesLabel();
 });
 
 fetch('/api/publication').then((response) => {
@@ -839,8 +957,266 @@ function renderProject(data, navigation = {}) {
   }
 }
 
+function clearSearchResults() {
+  searchSequence += 1;
+  searchResults.replaceChildren();
+  searchResults.hidden = true;
+  shownResults = 0;
+  document.querySelector('#project-search-empty').hidden = false;
+}
+
+function searchResultRow(item) {
+  const button = el('button', 'search-result');
+  button.type = 'button';
+  button.append(el('span', 'search-result-title',
+    item.titolo_progetto || repositoryMessages.unavailableProjectTitle));
+  button.append(el('span', 'search-result-key', 'CUP: ' + item.cup + ' · CLP: ' + (item.codice_locale_progetto || '—')));
+  const measure = [item.id_misura, item.descrizione_misura].filter(Boolean).join(' · ');
+  if (measure) button.append(el('span', 'search-result-meta', 'Misura: ' + measure));
+  const meta = [item.comuni, item.attuatori].filter(Boolean).join(' · ');
+  if (meta) button.append(el('span', 'search-result-meta', meta));
+  button.addEventListener('click', () => {
+    clearSearchResults();
+    searchCup(item.cup, { clp: item.codice_locale_progetto });
+  });
+  return button;
+}
+
+function currentFilters() {
+  return {
+    q: input.value.trim(),
+    ...selectedFilters,
+  };
+}
+
+function activeFilterCount() {
+  const filters = currentFilters();
+  return Object.keys(selectedFilters).filter((name) => filters[name]).length;
+}
+
+function updateFilterChips() {
+  const filters = currentFilters();
+  const active = Object.keys(selectedFilters).filter((name) => filters[name]);
+  document.querySelector('#home-projects .workspace-filter-count').textContent = active.length ? '(' + active.length + ')' : '';
+  filterChips.replaceChildren();
+  filterChips.hidden = !active.length;
+  for (const name of active) {
+    const chip = el('span', 'filter-chip');
+    chip.append(el('span', 'filter-chip-label',
+      (repositoryMessages.filterLabels[name] || name) + ': ' +
+      (name === 'approfondimento' ? filterFields[name].selectedOptions[0]?.textContent :
+        name === 'misura' ? filterFields[name].value : filters[name])));
+    const clear = el('button', 'filter-chip-clear', '×');
+    clear.type = 'button';
+    clear.setAttribute('aria-label', repositoryMessages.filterRemove + ' ' + name);
+    clear.addEventListener('click', () => {
+      filterFields[name].value = '';
+      selectedFilters[name] = '';
+      updateFilterChips();
+      runSearch();
+    });
+    chip.append(clear);
+    filterChips.append(chip);
+  }
+}
+
+function renderSearchPage(payload, append) {
+  document.querySelector('#project-search-empty').hidden = true;
+  if (!append) {
+    searchResults.replaceChildren();
+    shownResults = 0;
+  }
+  searchResults.hidden = false;
+  const results = payload.results || [];
+  if (!append && !results.length) {
+    searchResults.append(el('p', 'consultation-note', repositoryMessages.searchNoResults));
+    return;
+  }
+  let list = searchResults.querySelector('.search-result-list');
+  if (!list) {
+    list = el('ul', 'search-result-list');
+    searchResults.append(list);
+  }
+  for (const item of results) {
+    const entry = el('li');
+    entry.append(searchResultRow(item));
+    list.append(entry);
+  }
+  shownResults += results.length;
+  const total = payload.total || 0;
+  let count = searchResults.querySelector('.search-count');
+  if (!count) {
+    count = el('p', 'search-count');
+    searchResults.prepend(count);
+  }
+  count.textContent = total === 1
+    ? repositoryMessages.searchOneResult
+    : total + ' ' + repositoryMessages.searchResults;
+  let more = searchResults.querySelector('.search-more');
+  if (shownResults < total) {
+    if (!more) {
+      more = el('button', 'search-more text-button', repositoryMessages.searchMore);
+      more.type = 'button';
+      more.addEventListener('click', () => runSearch({ append: true }));
+      searchResults.append(more);
+    }
+    more.textContent = repositoryMessages.searchMore + ' (' + (total - shownResults) + ')';
+    more.disabled = false;
+  } else if (more) {
+    more.remove();
+  }
+}
+
+async function runSearch(options = {}) {
+  await messagesReady;
+  const append = Boolean(options.append);
+  const filters = currentFilters();
+  const filtered = Object.keys(selectedFilters).some((name) => filters[name]);
+  if (!filters.q && !filtered) {
+    clearSearchResults();
+    syncSearchUrl();
+    return;
+  }
+  if (!append) clearSearchResults();
+  const sequence = ++searchSequence;
+  const params = new URLSearchParams({ limit: String(SEARCH_PAGE) });
+  params.set('offset', String(append ? shownResults : 0));
+  for (const [name, value] of Object.entries(filters)) {
+    if (value) params.set(name, value);
+  }
+  if (append) {
+    const more = searchResults.querySelector('.search-more');
+    if (more) more.disabled = true;
+  }
+  try {
+    const response = await fetch('/api/search?' + params);
+    if (!response.ok) throw new Error('unavailable');
+    const payload = await response.json();
+    if (sequence !== searchSequence) return;
+    if (!payload.available) { showMessage(repositoryMessages.searchUnavailable, true); return; }
+    if (payload.timeout) { showMessage(repositoryMessages.searchTooSlow, true); return; }
+    if (payload.tooShort) { showMessage(repositoryMessages.searchTooShort, true); return; }
+    message.hidden = true;
+    renderSearchPage(payload, append);
+    syncSearchUrl();
+  } catch (error) {
+    if (sequence === searchSequence) showMessage(repositoryMessages.searchUnavailable, true);
+  } finally {
+    if (sequence === searchSequence) {
+      const more = searchResults.querySelector('.search-more');
+      if (more) more.disabled = false;
+    }
+  }
+}
+
+function syncSearchUrl() {
+  const filters = currentFilters();
+  const filtered = Object.keys(selectedFilters).filter((name) => filters[name].length);
+  const params = new URLSearchParams();
+  params.set('tab', 'projects');
+  if (!filtered.length && CUP_PATTERN.test(filters.q.toUpperCase())) {
+    params.set('cup', filters.q.toUpperCase());
+  } else {
+    for (const [name, value] of Object.entries(filters)) {
+      if (value) params.set(name, value);
+    }
+  }
+  const query = params.toString();
+  history.replaceState(null, '', query ? '/?' + query : '/');
+}
+
+window.aifelFilterDrawer.setupResponsive(
+  document.querySelector('#home-projects .workspace-controls-toggle'),
+  document.querySelector('#project-workspace-controls'));
+
+function attachCombobox(target, field) {
+  const list = el('ul', 'combobox-list');
+  list.hidden = true;
+  list.setAttribute('role', 'listbox');
+  target.insertAdjacentElement('afterend', list);
+  let timer = null;
+  let sequence = 0;
+  let active = -1;
+
+  const close = () => {
+    list.hidden = true;
+    list.replaceChildren();
+    target.setAttribute('aria-expanded', 'false');
+    active = -1;
+  };
+
+  const choose = (item) => {
+    target.value = item.label || item.valore;
+    selectedFilters[field] = item.valore;
+    close();
+    updateFilterChips();
+    runSearch();
+  };
+
+  const render = (values) => {
+    list.replaceChildren();
+    if (!values.length) { close(); return; }
+    for (const item of values) {
+      const entry = el('li');
+      entry.setAttribute('role', 'option');
+      const option = el('button', 'combobox-option');
+      option.type = 'button';
+      option.append(el('span', 'combobox-value', item.label || item.valore));
+      if (item.progetti) option.append(el('span', 'combobox-count', String(item.progetti)));
+      option.addEventListener('click', () => choose(item));
+      entry.append(option);
+      list.append(entry);
+    }
+    list.hidden = false;
+    target.setAttribute('aria-expanded', 'true');
+  };
+
+  target.addEventListener('input', () => {
+    clearTimeout(timer);
+    const mine = ++sequence;
+    if (selectedFilters[field]) {
+      selectedFilters[field] = '';
+      updateFilterChips();
+      runSearch();
+    }
+    const query = target.value.trim();
+    if (!query) { close(); return; }
+    timer = setTimeout(async () => {
+      try {
+        const response = await fetch('/api/suggest?campo=' + field + '&q=' + encodeURIComponent(query));
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (mine !== sequence) return;
+        render(payload.values || []);
+      } catch (error) { /* suggestions are optional */ }
+    }, 150);
+  });
+
+  target.addEventListener('keydown', (event) => {
+    const options = [...list.querySelectorAll('.combobox-option')];
+    if (event.key === 'Escape') { close(); return; }
+    if (event.key === 'Enter') { event.preventDefault(); return; }
+    if (!options.length) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      active = (active + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+      options[active].focus();
+    }
+  });
+
+  target.addEventListener('blur', () => setTimeout(() => {
+    if (list.contains(document.activeElement)) return;
+    close();
+    if (!selectedFilters[field]) target.value = '';
+  }, 150));
+  list.addEventListener('focusout', () => setTimeout(() => {
+    if (document.activeElement !== target && !list.contains(document.activeElement)) close();
+  }, 150));
+}
+
 async function searchCup(cup, navigation = {}) {
   await messagesReady;
+  document.querySelector('#project-search-empty').hidden = true;
   const normalized = cup.trim().toUpperCase();
   input.value = normalized;
   results.hidden = true;
@@ -859,6 +1235,7 @@ async function searchCup(cup, navigation = {}) {
     renderProject(data, navigation);
     window.dispatchEvent(new Event('aifel:project-opened'));
     const locationParams = new URLSearchParams({cup: normalized});
+    if (document.documentElement.classList.contains('embedded-cup')) locationParams.set('embedded', '1');
     if (navigation.section) locationParams.set('section', navigation.section);
     if (navigation.clp) locationParams.set('clp', navigation.clp);
     history.replaceState(null, '', '/?' + locationParams);
@@ -868,44 +1245,77 @@ async function searchCup(cup, navigation = {}) {
   }
 }
 
-form.addEventListener('submit', (event) => { event.preventDefault(); searchCup(input.value); });
-function updateExamplesLabel() {
-  const label = examples.hidden ? repositoryMessages.investigationCups : repositoryMessages.hideInvestigationCups;
-  const chevron = el('span', '', examples.hidden ? '⌄' : '⌃');
-  chevron.setAttribute('aria-hidden', 'true');
-  examplesButton.replaceChildren(document.createTextNode(label + ' '), chevron);
-  examplesButton.setAttribute('aria-expanded', String(!examples.hidden));
+function submitSearch() {
+  const value = input.value.trim();
+  clearTimeout(searchTimer);
+  if (CUP_PATTERN.test(value.toUpperCase())) {
+    clearSearchResults();
+    searchCup(value);
+    return;
+  }
+  if (value && value.length < SEARCH_MIN_LENGTH) {
+    showMessage(repositoryMessages.searchTooShort, true);
+    return;
+  }
+  runSearch();
 }
-examplesButton.addEventListener('click', () => {
-  examples.hidden = !examples.hidden;
-  updateExamplesLabel();
+
+form.addEventListener('submit', (event) => { event.preventDefault(); submitSearch(); });
+
+input.addEventListener('input', () => {
+  const value = input.value.trim();
+  const exactCup = CUP_PATTERN.test(value.toUpperCase());
+  openExactCup.hidden = !exactCup;
+  if (exactCup) openExactCup.textContent = 'Apri CUP ' + value.toUpperCase();
+  clearTimeout(searchTimer);
+  if (!value && activeFilterCount()) {
+    searchTimer = setTimeout(() => runSearch(), SEARCH_DELAY);
+    return;
+  }
+  if (exactCup || value.length < SEARCH_MIN_LENGTH) {
+    clearSearchResults();
+    return;
+  }
+  searchTimer = setTimeout(() => runSearch(), SEARCH_DELAY);
 });
 
-async function renderInvestigationDirectory(groups, explorer) {
-  if (!explorer) {
-    const records = new Map();
-    for (const group of groups) for (const item of group.projects || []) {
-      if (!records.has(item.cup)) records.set(item.cup, {cup: item.cup, kinds: [], titles: [], municipalities: [], projects: []});
-      const record = records.get(item.cup);
-      record.kinds.push(group.kind);
-      record.titles.push(...(item.titles || []));
-      record.municipalities.push(...(item.municipalities || []));
-    }
-    explorer = [...records.values()];
+filtersClear.addEventListener('click', () => {
+  for (const [name, field] of Object.entries(filterFields)) {
+    field.value = '';
+    selectedFilters[name] = '';
   }
-  await window.aifelInvestigationExplorer.mount(examples, explorer, searchCup);
+  updateFilterChips();
+  if (!input.value.trim()) { clearSearchResults(); syncSearchUrl(); return; }
+  runSearch();
+});
+
+for (const [name, field] of Object.entries(filterFields)) {
+  if (name === 'approfondimento') {
+    field.addEventListener('change', () => {
+      selectedFilters[name] = field.value;
+      updateFilterChips();
+      runSearch();
+    });
+  } else attachCombobox(field, name);
 }
 
-fetch('/api/cups').then((response) => {
-  if (!response.ok) throw new Error('Data service is unavailable.');
-  return response.json();
-}).then(async ({ cups, investigations, explorer }) => {
-  await messagesReady;
-  const availableCups = cups || [];
-  examples.replaceChildren();
-  const groups = investigations || [{kind: 'procurement', projects: availableCups.map((cup) => ({cup}))}];
-  await renderInvestigationDirectory(groups, explorer);
-  if (!examples.childElementCount) examples.append(el('p', 'consultation-note', repositoryMessages.noInvestigationCups));
-  const initialCup = new URLSearchParams(location.search).get('cup');
-  if (initialCup) searchCup(initialCup, {section: new URLSearchParams(location.search).get('section'), clp: new URLSearchParams(location.search).get('clp')});
-}).catch(() => { examplesButton.hidden = true; });
+function restoreSearchFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const cup = params.get('cup');
+  if (cup && CUP_PATTERN.test(cup.toUpperCase())) {
+    searchCup(cup, { section: params.get('section'), clp: params.get('clp') });
+    return;
+  }
+  const names = ['q', 'comune', 'ente', 'misura', 'approfondimento'];
+  const hasValue = names.some((name) => (params.get(name) || '').trim());
+  if (!hasValue) return;
+  input.value = params.get('q') || '';
+  for (const name of names.slice(1)) {
+    filterFields[name].value = params.get(name) || '';
+    selectedFilters[name] = filterFields[name].value;
+  }
+  updateFilterChips();
+  runSearch();
+}
+
+if (!projectRestorePending) restoreSearchFromUrl();
